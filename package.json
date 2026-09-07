@@ -5,7 +5,8 @@
   "author": "Matteus sousa",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "node -e \"require('fs').copyFileSync('renderer-dev.js', 'renderer.js')\" && electron .",
+    "dev": "electron .",
     "postinstall": "electron-builder install-app-deps",
     "build:protect": "javascript-obfuscator renderer-dev.js --output renderer.js --string-array-encoding base64 --split-strings true --debug-protection true",
     "dist": "npm run build:protect && electron-builder",
