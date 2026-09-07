@@ -993,10 +993,16 @@ ipcMain.handle('buscar-tora-por-codigo', async (event, codigo) => {
 ipcMain.handle('buscar-tora-por-numero', (event, numero) => {
     const termo = String(numero).trim();
     const sql = `
-        SELECT t.*, e.nome as especie_nome, l.numero as lote_nome 
+        SELECT t.*,
+               e.nome as especie_nome,
+               l.numero as lote_nome,
+               r.numero as romaneio_numero,
+               f.nome as fornecedor_nome
         FROM toras t
         LEFT JOIN especies e ON t.especie_id = e.id 
         LEFT JOIN lotes l ON t.lote_id = l.id
+        LEFT JOIN romaneios r ON t.romaneio_id = r.id
+        LEFT JOIN fornecedores f ON r.fornecedor_id = f.id
         WHERE TRIM(t.codigo) = ? 
            OR CAST(t.codigo AS INTEGER) = CAST(? AS INTEGER)
            OR t.codigo LIKE ?

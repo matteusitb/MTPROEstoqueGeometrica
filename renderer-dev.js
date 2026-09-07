@@ -3426,36 +3426,169 @@ function renderizarGraficoEspeciesDonut(dados) {
     `;
 }
 
-async function buscarNumeroGlobal() {
+async function buscarNumeroGlobal(codigoExplicito) {
     const input = document.getElementById('busca-global-numero');
-    const codigo = input.value.trim();
+    const codigo = (codigoExplicito || (input ? input.value : '')).trim();
     if (!codigo) return;
 
     try {
         const res = await window.api.invoke('buscar-tora-por-numero', codigo);
         if (res && res.success && res.data) {
             const t = res.data;
-            Swal.fire({
-                title: `Tora Número ${t.codigo}`,
-                html: `
-                    <div style="text-align: left; font-size: 14px; line-height: 1.6;">
-                        <p><strong>Espécie:</strong> ${t.especie_nome || '-'}</p>
-                        <p><strong>Lote:</strong> ${t.lote_nome || t.lote_numero || '-'}</p>
-                        <p><strong>Medidas:</strong> ${t.m1} × ${t.m2} cm | ${(t.comprimento || 0).toFixed(2)} m</p>
-                        <p><strong>Volume:</strong> ${(t.volume || 0).toFixed(3)} m³</p>
-                        <p><strong>Status:</strong> <span style="font-weight: bold; color: ${t.status === 'serrada' ? '#ef4444' : '#10b981'};">${t.status === 'serrada' ? 'Serrada (Baixada)' : 'No Pátio'}</span></p>
-                        <p><strong>Entrada:</strong> ${formatarDataBR(t.data_entrada)}</p>
-                        ${t.data_saida ? `<p><strong>Saída:</strong> ${formatarDataBR(t.data_saida)}</p>` : ''}
+            const isSerrada = t.status === 'serrada';
+
+            const m1Liq = t.m1 || 0;
+            const m2Liq = t.m2 || 0;
+            const compLiq = t.comprimento || 0;
+            const volLiq = (t.volume || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+            const m1Bruto = t.m1_bruto || t.m1 || 0;
+            const m2Bruto = t.m2_bruto || t.m2 || 0;
+            const compBruto = t.comprimento_bruto || t.comprimento || 0;
+            const volBruto = (t.volume_bruto || t.volume || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+            const statusBadge = isSerrada
+                ? `<span style="display: inline-flex; align-items: center; gap: 6px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 12px;">
+                     <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px #ef4444;"></span>
+                     Serrada (Baixada)
+                   </span>`
+                : `<span style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 12px;">
+                     <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+                     No Pátio (Disponível)
+                   </span>`;
+
+            const htmlConteudo = `
+                <div class="modal-tora-container">
+                    <!-- CABEÇALHO DO CARD -->
+                    <div class="modal-tora-header">
+                        <div>
+                            <span class="modal-tora-card-label">Identificação da Tora</span>
+                            <div class="modal-tora-codigo">Nº ${t.codigo}</div>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                        </div>
                     </div>
-                `,
-                icon: 'info',
+
+                    <!-- GRID DE IDENTIFICAÇÃO -->
+                    <div class="modal-tora-grid">
+                        <div class="modal-tora-card">
+                            <span class="modal-tora-card-label">Espécie de Madeira</span>
+                            <div class="modal-tora-card-val">${t.especie_nome || '-'}</div>
+                        </div>
+                        <div class="modal-tora-card">
+                            <span class="modal-tora-card-label">Lote no Pátio</span>
+                            <div class="modal-tora-card-val">${t.lote_nome || t.lote_numero || '-'}</div>
+                        </div>
+                        <div class="modal-tora-card">
+                            <span class="modal-tora-card-label">Romaneio de Entrada</span>
+                            <div class="modal-tora-card-val" style="color: var(--accent-color, #6366f1);">${t.romaneio_numero || 'Sem Romaneio (Direta)'}</div>
+                        </div>
+                        <div class="modal-tora-card">
+                            <span class="modal-tora-card-label">Fornecedor</span>
+                            <div class="modal-tora-card-val">${t.fornecedor_nome || '-'}</div>
+                        </div>
+                    </div>
+
+                    <!-- CUBAGEM GEOMÉTRICA (LÍQUIDA E BRUTA) -->
+                    <div class="modal-tora-grid">
+                        <div class="modal-tora-vol-box modal-tora-vol-liq">
+                            <span style="font-size: 11px; color: #4338ca; font-weight: 700; text-transform: uppercase;">Medidas Líquidas</span>
+                            <div style="font-size: 12px; color: #475569; margin-top: 3px;">${m1Liq} × ${m2Liq} cm | ${compLiq.toFixed(2)} m</div>
+                            <div style="font-size: 17px; font-weight: 800; color: #4338ca; margin-top: 5px;">${volLiq} m³</div>
+                        </div>
+                        <div class="modal-tora-vol-box modal-tora-vol-bruto">
+                            <span style="font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase;">Medidas Brutas</span>
+                            <div style="font-size: 12px; color: #475569; margin-top: 3px;">${m1Bruto} × ${m2Bruto} cm | ${compBruto.toFixed(2)} m</div>
+                            <div style="font-size: 17px; font-weight: 800; color: #334155; margin-top: 5px;">${volBruto} m³</div>
+                        </div>
+                    </div>
+
+                    <!-- RASTREABILIDADE / DATAS -->
+                    <div class="modal-tora-card" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 0;">
+                        <div>
+                            <span style="color: var(--text-main, #64748b); font-size: 12px;">📅 Entrada:</span>
+                            <strong style="color: var(--text-dark, #0f172a); margin-left: 4px; font-size: 12px;">${formatarDataBR(t.data_entrada)}</strong>
+                        </div>
+                        ${t.data_saida ? `
+                            <div>
+                                <span style="color: var(--text-main, #64748b); font-size: 12px;">🚚 Baixa (Serrada):</span>
+                                <strong style="color: #b91c1c; margin-left: 4px; font-size: 12px;">${formatarDataBR(t.data_saida)}</strong>
+                            </div>
+                        ` : `
+                            <div>
+                                <span style="color: #059669; font-size: 12px; font-weight: 600;">✓ Estoque Ativo</span>
+                            </div>
+                        `}
+                    </div>
+
+                    ${isSerrada ? `
+                        <div class="modal-tora-aviso-estorno">
+                            ⚠️ <strong>Tora com baixa registrada.</strong> Se a baixa foi feita por engano ou cancelada, utilize o botão abaixo para estornar a tora imediatamente de volta ao estoque no pátio.
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            const swalConfig = {
+                title: '',
+                html: htmlConteudo,
+                showCloseButton: true,
+                showCancelButton: isSerrada,
+                confirmButtonText: isSerrada ? '↩️ Estornar para o Pátio' : 'Fechar',
+                cancelButtonText: 'Fechar',
+                confirmButtonColor: isSerrada ? '#f59e0b' : '#6366f1',
+                cancelButtonColor: '#94a3b8',
+                width: '560px'
+            };
+
+            const resultado = await Swal.fire(swalConfig);
+
+            if (isSerrada && resultado.isConfirmed) {
+                await executarEstornoTora(t.id, t.codigo);
+            }
+        } else {
+            Swal.fire({
+                title: 'Tora não localizada',
+                text: `A tora com número "${codigo}" não foi encontrada no sistema.`,
+                icon: 'warning',
                 confirmButtonColor: '#6366f1'
             });
-        } else {
-            Swal.fire('Não encontrada', `A tora número "${codigo}" não foi localizada no sistema.`, 'warning');
         }
     } catch (err) {
         avisar('error', tratarErroIpc(err));
+    }
+}
+
+async function executarEstornoTora(idTora, codigoTora) {
+    const confirmacao = await Swal.fire({
+        title: `Estornar Tora Nº ${codigoTora}?`,
+        text: `A tora voltará ao status "No Pátio" e o seu volume será somado novamente ao estoque disponível.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Sim, Estornar Tora',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (confirmacao.isConfirmed) {
+        try {
+            const res = await window.api.invoke('estornar-baixa-tora', idTora, codigoTora);
+            if (res && res.success) {
+                avisar('success', `Tora Nº ${codigoTora} estornada para o pátio com sucesso!`);
+                atualizarDashboard();
+                if (typeof carregarEstoque === 'function') {
+                    carregarEstoque(true);
+                }
+                // Reabre a modal atualizada para visualização imediata do novo status
+                setTimeout(() => buscarNumeroGlobal(codigoTora), 300);
+            } else {
+                throw new Error(res.error || 'Não foi possível realizar o estorno da tora.');
+            }
+        } catch (err) {
+            Swal.fire('Erro no Estorno', tratarErroIpc(err), 'error');
+        }
     }
 }
 

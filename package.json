@@ -1,6 +1,6 @@
 {
   "name": "gestao-toras",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Sistema de Controle de Estoque de Toras Geométrica",
   "author": "Matteus sousa",
   "main": "main.js",
