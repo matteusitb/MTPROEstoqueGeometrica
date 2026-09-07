@@ -1,0 +1,83 @@
+{
+  "name": "estoque-toras",
+  "version": "1.1.6",
+  "description": "Sistema profissional para gestão de estoque e romaneio de toras.",
+  "author": "Matteus Sousa",
+  "main": "entry.js",
+  "scripts": {
+    "start": "node -e \"require('fs').copyFileSync('renderer-dev.js', 'renderer.js')\" && electron .",
+    "build:protect": "node -e \"require('fs').copyFileSync('renderer-dev.js', 'renderer.js')\" && npx javascript-obfuscator renderer.js --output renderer.js && set ELECTRON_RUN_AS_NODE=1 && npx electron node_modules/bytenode/lib/cli.js --compile main.js",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "release": "npm run build:protect && electron-builder --publish always",
+    "dist": "npm run build:protect && electron-builder"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.3",
+    "better-sqlite3": "^11.0.0",
+    "bytenode": "^1.5.7",
+    "dotenv": "^17.4.2",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.7.3",
+    "node-machine-id": "^1.1.12",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.4.0",
+    "electron-rebuild": "^3.2.9",
+    "javascript-obfuscator": "^4.1.1"
+  },
+  "build": {
+    "appId": "com.estoquetoras.app",
+    "productName": "Controle Estoque de Toras",
+    "copyright": "Copyright © 2026 Matteus Sousa",
+    "npmRebuild": true,
+    "nodeGypRebuild": false,
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**/*"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MatteusItb",
+        "repo": "toras-control"
+      }
+    ],
+    "directories": {
+      "output": "dist_setup"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Controle Estoque de Toras",
+      "uninstallDisplayName": "Desinstalar Controle de Toras",
+      "runAfterFinish": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
+    },
+    "files": [
+      "**/*",
+      "!main.js",
+      "!renderer-dev.js",
+      "!dist_setup/**/*",
+      "!node_modules/*/{test,tests,testing,example,examples,docs}",
+      "!.git/**/*",
+      "!.vscode/**/*"
+    ]
+  }
+}

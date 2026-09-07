@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToraControl - Gestão de Estoque de Toras</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="libs/lucide.min.js"></script>
+    <script src="libs/sweetalert2.all.min.js"></script>
+    <script src="libs/jspdf.umd.min.js"></script>
+    <script src="libs/jspdf-autotable.min.js"></script>
+    <script src="libs/exceljs.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            if (localStorage.getItem('theme') === 'dark' && document.body) {
+                document.body.classList.add('dark-mode');
+            }
+        });
+    </script>
+</head>
+
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="v-login-screen" class="bg-main"
+        style="display: none; height: 100vh; width: 100vw; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; z-index: 9999;">
+        <div class="form-card shadow-premium" style="max-width: 400px; padding: 40px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div class="logo-icon"
+                    style="background: var(--active-item-bg); width: 60px; height: 60px; border-radius: 15px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                    <i data-lucide="zap" style="width: 32px; height: 32px; color: var(--accent-color);"></i>
+                </div>
+                <h2 class="text-title" style="font-weight: 800;">ToraControl</h2>
+                <p class="text-muted" style="font-size: 0.9rem;">Acesse sua conta para continuar</p>
+            </div>
+
+            <div class="input-container" style="margin-bottom: 20px;">
+                <label>E-mail</label>
+                <input type="email" id="login-email" class="custom-input" placeholder="seu@email.com"
+                    onkeydown="if(event.key==='Enter'){ document.getElementById('login-senha').focus(); }">
+            </div>
+
+            <div class="input-container" style="margin-bottom: 30px;">
+                <label>Senha</label>
+                <input type="password" id="login-senha" class="custom-input" placeholder="••••••••"
+                    onkeydown="if(event.key==='Enter'){ realizarLogin(); }">
+            </div>
+
+            <button id="btn-entrar" class="btn-save" onclick="realizarLogin()"
+                style="width: 100%; justify-content: center; padding: 15px;">
+                <i data-lucide="log-in" id="btn-entrar-icon"></i>
+                <span id="btn-entrar-texto">Entrar no Sistema</span>
+            </button>
+
+            <p id="login-erro"
+                style="color: #ef4444; font-size: 0.85rem; margin-top: 15px; text-align: center; display: none;"></p>
+        </div>
+    </div>
+
+    <!-- TELA DE ASSINATURA VENCIDA -->
+    <div id="v-expired-screen" class="bg-main"
+        style="display: none; height: 100vh; width: 100vw; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; z-index: 9999;">
+        <div class="form-card shadow-premium" style="max-width: 450px; padding: 40px; border-top: 5px solid #ef4444;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div class="logo-icon"
+                    style="background: #fee2e2; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                    <i data-lucide="calendar-off" style="width: 35px; height: 35px; color: #ef4444;"></i>
+                </div>
+                <h2 class="text-title" style="font-weight: 800; color: #b91c1c;">Acesso Suspenso</h2>
+                <p class="text-muted" style="font-size: 0.95rem; margin-top: 10px;">Sua assinatura mensal expirou. Para
+                    continuar utilizando o sistema, realize o pagamento ou entre em contato com o administrador.</p>
+            </div>
+
+            <div
+                style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
+                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 5px; text-align: center;">ID desta Máquina
+                    (para renovação offline):</p>
+                <p id="expired-machine-id"
+                    style="font-family: monospace; font-size: 0.8rem; background: #fff; padding: 10px; border-radius: 6px; text-align: center; border: 1px dashed #cbd5e1; word-break: break-all;">
+                </p>
+            </div>
+
+            <button class="btn-save" onclick="verificarPagamentoAgora()"
+                style="width: 100%; justify-content: center; padding: 15px; margin-bottom: 15px; background: #2563eb;">
+                <i data-lucide="refresh-cw"></i> Já paguei, verificar agora
+            </button>
+
+            <button class="btn-outline" onclick="abrirModalAtivacao()"
+                style="width: 100%; justify-content: center; padding: 12px; border: 1px solid #e2e8f0; background: white; color: #64748b; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: 8px;">
+                <i data-lucide="key" style="width: 16px;"></i> Inserir código de renovação
+            </button>
+        </div>
+    </div>
+
+    <div class="wrapper">
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-area">
+                    <div class="logo-icon"><i data-lucide="zap"></i></div>
+                    <span class="nav-text">MT <strong>PRÓ</strong></span>
+                </div>
+                <button class="btn-toggle-sidebar" onclick="toggleSidebar()">
+                    <i data-lucide="chevron-left" id="icon-toggle"></i>
+                </button>
+            </div>
+
+            <ul class="components">
+                <li class="active" onclick="carregarTela('home', this)" data-tooltip="Dashboard">
+                    <a href="#"><i data-lucide="layout-grid"></i> <span class="nav-text">Dashboard</span></a>
+                </li>
+                
+                <!-- Grupo Cadastros -->
+                <li class="menu-header"><span class="nav-text">Cadastros</span></li>
+                <li onclick="carregarTela('especies', this)" data-tooltip="Espécies">
+                    <a href="#"><i data-lucide="leaf"></i> <span class="nav-text">Espécies</span></a>
+                </li>
+                <li onclick="carregarTela('lotes', this)" data-tooltip="Lotes">
+                    <a href="#"><i data-lucide="layers"></i> <span class="nav-text">Lotes</span></a>
+                </li>
+                <li onclick="carregarTela('fornecedores', this)" data-tooltip="Fornecedores">
+                    <a href="#"><i data-lucide="users"></i> <span class="nav-text">Fornecedores</span></a>
+                </li>
+                <li onclick="carregarTela('motoristas', this)" data-tooltip="Motoristas">
+                    <a href="#"><i data-lucide="truck"></i> <span class="nav-text">Motoristas</span></a>
+                </li>
+                
+                <!-- Grupo Estoque -->
+                <li class="menu-header"><span class="nav-text">Estoque</span></li>
+                <li onclick="carregarTela('romaneios', this)" data-tooltip="Romaneios">
+                    <a href="#"><i data-lucide="clipboard-list"></i> <span class="nav-text">Romaneios de Entrada</span></a>
+                </li>
+                <li onclick="carregarTela('entradas', this)" data-tooltip="Entradas">
+                    <a href="#"><i data-lucide="arrow-down-left"></i> <span class="nav-text">Entradas no Estoque</span></a>
+                </li>
+                <li onclick="carregarTela('baixas', this)" data-tooltip="Baixas">
+                    <a href="#"><i data-lucide="arrow-up-right"></i> <span class="nav-text">Baixas de Estoque</span></a>
+                </li>
+                <li onclick="carregarTela('estoque', this)" data-tooltip="Estoque">
+                    <a href="#"><i data-lucide="database"></i> <span class="nav-text">Estoque Geral</span></a>
+                </li>
+
+                <!-- Grupo Financeiro -->
+                <li class="menu-header"><span class="nav-text">Financeiro</span></li>
+                <li onclick="carregarTela('fechamentos', this)" data-tooltip="Fechamentos">
+                    <a href="#"><i data-lucide="wallet"></i> <span class="nav-text">Fechamentos Motoristas</span></a>
+                </li>
+
+                <!-- Grupo Administração -->
+                <li class="menu-header"><span class="nav-text">Administração</span></li>
+                <li onclick="carregarTela('relatorios', this)" data-tooltip="Relatórios">
+                    <a href="#"><i data-lucide="file-text"></i> <span class="nav-text">Relatórios Gerenciais</span></a>
+                </li>
+                <li onclick="carregarTela('logs', this)" data-tooltip="Logs">
+                    <a href="#"><i data-lucide="scroll-text"></i> <span class="nav-text">Logs do Sistema</span></a>
+                </li>
+                <li onclick="carregarTela('configuracoes', this)" data-tooltip="Configurações">
+                    <a href="#"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <a href="#" class="btn-sair" onclick="window.close()">
+                    <i data-lucide="log-out"></i> <span class="nav-text">Sair</span>
+                </a>
+                <div class="dark-mode-toggle">
+                    <i data-lucide="moon"></i> <span class="nav-text">Modo Escuro</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- OVERLAY DA SIDEBAR (mobile) -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebarMobile()"></div>
+
+        <div id="content">
+            <header class="main-header">
+                <!-- Botão Hamburger (visível em telas ≤ 992px) -->
+                <button class="btn-hamburger" id="btn-hamburger" onclick="toggleSidebarMobile()" title="Abrir menu">
+                    <i data-lucide="menu"></i>
+                </button>
+                <h2 id="view-title">Dashboard</h2>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="cloud-sync-status" id="cloud-sync-indicator" title="Sincronização em nuvem" onclick="forcarSincronizacaoManual()" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; background: var(--badge-neutral-bg); color: var(--text-main);">
+                        <i data-lucide="cloud" id="cloud-sync-icon" style="width: 16px; height: 16px;"></i>
+                        <span id="cloud-sync-text">Carregando sync...</span>
+                        <span class="badge-pending-count" id="cloud-sync-pending-count" style="display: none; background: var(--badge-danger-bg); color: var(--badge-danger-text); padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; margin-left: 2px;">0</span>
+                    </div>
+                    <div class="user-info">
+                        <i data-lucide="user-circle"></i> <span>Operador de Pátio</span>
+                    </div>
+                </div>
+            </header>
+
+
+            <div id="dynamic-content">
+
+                <div id="v-home" class="view active">
+                    <div class="header-titles">
+                        <h2 class="text-title" style="margin: 0; font-size: 1.8rem; font-weight: 700;">Painel de
+                            Indicadores</h2>
+                        <p class="text-muted" style="margin: 5px 0 0 0; font-size: 1rem;">Resumo operacional do pátio em
+                            tempo real</p>
+                    </div>
+
+                    <div class="header-search" style="margin-top:20px">
+                        <div style="position: relative; width: 320px;">
+                            <i data-lucide="search"
+                                style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; color: #94a3b8;"></i>
+                            <input type="text" id="busca-global-numero" placeholder="Buscar Número..."
+                                onblur="aplicarMascaraNumero(this)"
+                                onkeyup="if(event.key === 'Enter') { aplicarMascaraNumero(this); buscarNumeroGlobal(); }"
+                                maxlength="10" class="bg-input border-subtle"
+                                style="width: 100%; padding: 12px 16px 12px 42px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); outline: none; transition: all 0.2s; font-size: 0.95rem;">
+                        </div>
+                    </div>
+                    <div class="dashboard-grid">
+                        <div class="dash-card">
+                            <div class="dash-icon bg-dash-green">
+                                <i data-lucide="package"></i>
+                            </div>
+                            <div class="dash-info">
+                                <span class="dash-label">Estoque Total</span>
+                                <h3 id="dash-total-pecas">0</h3>
+                                <p>Toras</p>
+                            </div>
+                        </div>
+
+                        <div class="dash-card">
+                            <div class="dash-icon bg-dash-blue">
+                                <i data-lucide="database"></i>
+                            </div>
+                            <div class="dash-info">
+                                <span class="dash-label">Volume Geral</span>
+                                <h3 id="dash-total-volume">0.000</h3>
+                                <p>Metros Cúbicos (m³)</p>
+                            </div>
+                        </div>
+
+                        <div class="dash-card">
+                            <div class="dash-icon bg-dash-yellow">
+                                <i data-lucide="activity"></i>
+                            </div>
+                            <div class="dash-info">
+                                <span class="dash-label">Ações de Hoje</span>
+                                <h3 id="dash-acoes-hoje">0</h3>
+                                <p>Registros no Log</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CONTAINER DOS GRÁFICOS ANALÍTICOS (SVG) -->
+                    <div class="dashboard-charts" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; margin-top: 30px;">
+                        <div class="dash-lotes-container" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px;"><i data-lucide="bar-chart-3" style="color: var(--accent-color); vertical-align: middle; margin-right: 8px; width: 20px; height: 20px;"></i>Movimentação Mensal de Volume (m³)</h4>
+                            <div class="chart-body" id="chart-volume-movimentacao" style="height: 240px; display: flex; align-items: flex-end; justify-content: space-around; position: relative; padding-bottom: 25px; border-bottom: 1px solid var(--border-color);">
+                                <!-- SVG Bar Chart será desenhado aqui dinamicamente -->
+                            </div>
+                        </div>
+
+                        <div class="dash-lotes-container" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px;"><i data-lucide="pie-chart" style="color: #10b981; vertical-align: middle; margin-right: 8px; width: 20px; height: 20px;"></i>Distribuição por Espécie</h4>
+                            <div class="chart-body" id="chart-especies-donut" style="height: 240px; display: flex; align-items: center; justify-content: center; position: relative;">
+                                <!-- SVG Donut Chart será desenhado aqui dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-footer"
+                        style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 20px; margin-top: 30px;">
+
+                        <div class="dash-table-container">
+                            <h4>Últimas Toras Cadastradas</h4>
+                            <table class="dash-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Espécie</th>
+                                        <th>Volume (m³)</th>
+                                        <th class="text-right">Data Entrada</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-lista-recente"></tbody>
+                            </table>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <div class="dash-lotes-container">
+                                <h4>Resumo por Lote</h4>
+                                <div id="dash-lista-lotes"></div>
+                            </div>
+                            <div class="dash-lotes-container">
+                                <h4>Ranking de Espécies em Estoque</h4>
+                                <div id="dash-ranking-especies"></div>
+                            </div>
+                            <div class="dash-lotes-container">
+                                <h4>Atividades Recentes</h4>
+                                <div id="dash-logs-recentes"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-entradas" class="view">
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="plus-circle"></i></div>
+                            <div>
+                                <h3>Nova Entrada de Tora</h3>
+                                <p>Dê entrada de Toras nos seus Pátios</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <input type="hidden" id="tora-id">
+
+                            <div class="form-section-title">Identificação da Tora</div>
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Código / Número</label>
+                                    <input type="text" id="tora-codigo" class="custom-input"
+                                        onblur="aplicarMascaraNumero(this)" maxlength="10"
+                                        placeholder="Ex: 001 ou 1050">
+                                </div>
+                                <div class="input-container">
+                                    <label>Espécie</label>
+                                    <select id="tora-especie" class="custom-input"></select>
+                                </div>
+                                <div class="input-container">
+                                    <label>Lote de Destino</label>
+                                    <select id="tora-lote" class="custom-input"></select>
+                                </div>
+                            </div>
+
+                            <div class="form-row" style="margin-top: 0;">
+                                <div class="input-container" style="grid-column: span 3;">
+                                    <label>Romaneio de Entrada <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                                    <select id="tora-romaneio" class="custom-input">
+                                        <option value="">Sem Romaneio</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">Medidas de Cubagem</div>
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Rodo (cm)</label>
+                                    <input type="number" id="rodo" oninput="calcularCubagem()"
+                                        class="custom-input highlight-focus" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Comprimento (m)</label>
+                                    <input type="text" id="comprimento"
+                                        oninput="mascaraComprimento(this); calcularCubagem()"
+                                        onblur="finalizarComprimento(this); calcularCubagem()"
+                                        class="custom-input highlight-focus" placeholder="0,00">
+                                </div>
+                                <div class="input-container">
+                                    <label>Rodo Bruto (cm)</label>
+                                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                                        <input type="number" id="rodo-bruto" oninput="calcularCubagem()"
+                                            class="custom-input highlight-focus readonly-field" readonly placeholder="0" style="width: 100%; padding-right: 35px; background: var(--bg-input, #f8fafc);">
+                                        <button type="button" class="btn-lock-toggle" onclick="toggleLockField('rodo-bruto', this)" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #94a3b8; display: flex; align-items: center; padding: 0;">
+                                            <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="input-container">
+                                    <label>Comp. Bruto (m)</label>
+                                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                                        <input type="text" id="comprimento-bruto"
+                                            oninput="mascaraComprimento(this); calcularCubagem()"
+                                            onblur="finalizarComprimento(this); calcularCubagem()"
+                                            class="custom-input highlight-focus readonly-field" readonly placeholder="0,00" style="width: 100%; padding-right: 35px; background: var(--bg-input, #f8fafc);">
+                                        <button type="button" class="btn-lock-toggle" onclick="toggleLockField('comprimento-bruto', this)" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #94a3b8; display: flex; align-items: center; padding: 0;">
+                                            <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">Descontos (Oco)</div>
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Desconto 1 (cm)</label>
+                                    <input type="number" id="d1" oninput="calcularCubagem()"
+                                        class="custom-input highlight-focus" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Desconto 2 (cm)</label>
+                                    <input type="number" id="d2" oninput="calcularCubagem()"
+                                        class="custom-input highlight-focus" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Tot. Desconto (m³)</label>
+                                    <input type="text" id="total-desconto-ver" class="custom-input readonly-field"
+                                        readonly placeholder="0,000" tabindex="-1">
+                                </div>
+                            </div>
+
+                            <div class="result-panel">
+                                <div class="result-info">
+                                    <span>Volume Líquido Calculado</span>
+                                    <h2 id="volume-result">0,000 m³</h2>
+                                    <small id="detalhe-calculo" class="text-muted"
+                                        style="font-size: 10px; opacity: 0.8;"></small>
+                                </div>
+                                <div class="result-icon"><i data-lucide="calculator"></i></div>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" id="btn-salvar-tora" onclick="salvarTora()">
+                                <i data-lucide="check"></i> <span>Confirmar Entrada</span>
+                            </button>
+                            <button class="btn-cancel" id="btn-cancelar-tora" style="display: none;"
+                                onclick="resetFormEntrada()">
+                                Cancelar Edição
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="history"></i></div>
+                            <div>
+                                <h3>Últimas Toras Registradas</h3>
+                                <p>Histórico recente de entradas no pátio</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Espécie</th>
+                                        <th>Lote</th>
+                                        <th>Rodo/Comp</th>
+                                        <th>Oco (cm)</th>
+                                        <th>Vol Líquido</th>
+                                        <th style="text-align: right;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-entradas-recentes"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-especies" class="view">
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header"
+                            style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="header-icon"><i data-lucide="leaf"></i></div>
+                                <div>
+                                    <h3>Gestão de Espécies (Nuvem)</h3>
+                                    <p>As espécies são gerenciadas via Nuvem. Clique para atualizar a lista local.</p>
+                                </div>
+                            </div>
+                            <button class="btn-save" onclick="sincronizarEspecies()"
+                                style="background: var(--badge-success-text);">
+                                <i data-lucide="refresh-cw"></i> <span>Sincronizar com a Nuvem</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="list"></i></div>
+                            <div>
+                                <h3>Espécies Sincronizadas</h3>
+                                <p>Lista de espécies disponíveis para uso no estoque</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome Popular</th>
+                                        <th>Nome Científico</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-especies"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-lotes" class="view">
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="layers"></i></div>
+                            <div>
+                                <h3>Novo Lote</h3>
+                                <p>Crie agrupamentos para organizar suas toras no pátio</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <input type="hidden" id="lote-id">
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Número do Lote</label>
+                                    <input type="text" id="lote-numero" class="custom-input" placeholder="Ex: 001/2026">
+                                </div>
+                                <div class="input-container" style="grid-column: span 2;">
+                                    <label>Descrição / Observação</label>
+                                    <input type="text" id="lote-descricao" class="custom-input"
+                                        placeholder="Ex: Lote destinado à exportação">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" id="btn-salvar-lote" onclick="salvarLote()">
+                                <i data-lucide="save"></i> <span>Salvar Lote</span>
+                            </button>
+                            <button class="btn-cancel" id="btn-cancelar-edicao" style="display: none;"
+                                onclick="resetLoteForm()">
+                                Cancelar Edição
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="table"></i></div>
+                            <div>
+                                <h3>Lotes Ativos</h3>
+                                <p>Lista de lotes disponíveis para armazenamento</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número do Lote</th>
+                                        <th>Descrição</th>
+                                        <th style="text-align: center;">Qtd Toras</th>
+                                        <th style="text-align: center;">Volume Total</th>
+                                        <th style="text-align: right;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-lotes"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-fornecedores" class="view">
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="users"></i></div>
+                            <div>
+                                <h3 id="forn-form-titulo">Novo Fornecedor</h3>
+                                <p>Cadastre os fornecedores parceiros que entregam toras no pátio</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <input type="hidden" id="fornecedor-id">
+                            <div class="form-row">
+                                <div class="input-container" style="grid-column: span 3;">
+                                    <label>Nome do Fornecedor</label>
+                                    <input type="text" id="fornecedor-nome" class="custom-input" placeholder="Ex: Madeireira Silva">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" id="btn-salvar-fornecedor" onclick="salvarFornecedor()">
+                                <i data-lucide="save"></i> <span>Salvar Fornecedor</span>
+                            </button>
+                            <button class="btn-cancel" id="btn-cancelar-fornecedor" style="display: none;"
+                                onclick="resetFornecedorForm()">
+                                Cancelar Edição
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="table"></i></div>
+                            <div>
+                                <h3>Fornecedores Cadastrados</h3>
+                                <p>Lista de fornecedores disponíveis no sistema</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome do Fornecedor</th>
+                                        <th style="text-align: right; padding-right: 25px;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-fornecedores"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-motoristas" class="view">
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="truck"></i></div>
+                            <div>
+                                <h3 id="mot-form-titulo">Novo Motorista</h3>
+                                <p>Cadastre os motoristas responsáveis pelo transporte de toras</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <input type="hidden" id="motorista-id">
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Nome do Motorista</label>
+                                    <input type="text" id="motorista-nome" class="custom-input" placeholder="Ex: João Souza">
+                                </div>
+                                <div class="input-container">
+                                    <label>CPF</label>
+                                    <input type="text" id="motorista-cpf" class="custom-input" placeholder="Ex: 000.000.000-00">
+                                </div>
+                                <div class="input-container">
+                                    <label>CNH</label>
+                                    <input type="text" id="motorista-cnh" class="custom-input" placeholder="Ex: 000000000">
+                                </div>
+                            </div>
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Placa do Veículo</label>
+                                    <input type="text" id="motorista-placa" class="custom-input" placeholder="Ex: ABC-1234">
+                                </div>
+                                <div class="input-container">
+                                    <label>Telefone</label>
+                                    <input type="text" id="motorista-telefone" class="custom-input" placeholder="Ex: (00) 00000-0000">
+                                </div>
+                                <div class="input-container">
+                                    <label>Comissão (%)</label>
+                                    <input type="number" id="motorista-comissao" class="custom-input" min="0" max="100" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Salário Fixo (R$)</label>
+                                    <input type="text" id="motorista-salario" class="custom-input" placeholder="Ex: 3.500,00">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" id="btn-salvar-motorista" onclick="salvarMotorista()">
+                                <i data-lucide="save"></i> <span>Salvar Motorista</span>
+                            </button>
+                            <button class="btn-cancel" id="btn-cancelar-motorista" style="display: none;"
+                                onclick="resetMotoristaForm()">
+                                Cancelar Edição
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="table"></i></div>
+                            <div>
+                                <h3>Motoristas Cadastrados</h3>
+                                <p>Lista de motoristas disponíveis no sistema</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Placa</th>
+                                        <th>Telefone</th>
+                                        <th style="text-align: center;">Comissão</th>
+                                        <th style="text-align: center;">Salário Fixo</th>
+                                        <th style="text-align: right; padding-right: 25px;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-motoristas"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- VIEW: FECHAMENTO DE MOTORISTAS -->
+                <div id="v-fechamentos" class="view">
+                    <!-- Sistema de Abas Internas -->
+                    <div class="tabs-container">
+                        <button class="tab-btn active" onclick="switchFechamentoTab('novo', this)">
+                            <i data-lucide="calculator"></i> Novo Fechamento
+                        </button>
+                        <button class="tab-btn" onclick="switchFechamentoTab('historico', this)">
+                            <i data-lucide="history"></i> Histórico de Fechamentos
+                        </button>
+                        <button class="tab-btn" onclick="switchFechamentoTab('vales', this)">
+                            <i data-lucide="banknote"></i> Lançamento de Vales
+                        </button>
+                    </div>
+
+                    <!-- ABA 1: NOVO FECHAMENTO -->
+                    <div id="tab-content-novo" class="tab-content" style="display: block;">
+                        <div class="form-card" style="margin-bottom: 25px;">
+                            <div class="form-header">
+                                <div class="header-icon" style="background: #e0e7ff; color: #6366f1;"><i data-lucide="calculator"></i></div>
+                                <div>
+                                    <h3>Gerar Fechamento de Motorista</h3>
+                                    <p>Selecione o motorista e defina o intervalo (período ou romaneio) para calcular as comissões</p>
+                                </div>
+                            </div>
+                            <div class="form-body">
+                                <div class="form-row">
+                                    <div class="input-container">
+                                        <label>Motorista</label>
+                                        <select id="fech-motorista-id" class="custom-input" onchange="limparPreviaFechamento()">
+                                            <option value="">Selecione o Motorista...</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-container">
+                                        <label>Filtrar por</label>
+                                        <select id="fech-tipo-filtro" class="custom-input" onchange="toggleTipoFiltroFechamento()">
+                                            <option value="datas">📅 Intervalo de Datas</option>
+                                            <option value="romaneios">📑 Intervalo de Romaneios</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Filtro por Datas -->
+                                <div class="form-row" id="row-filtro-datas">
+                                    <div class="input-container">
+                                        <label>Data de Início</label>
+                                        <input type="date" id="fech-data-inicio" class="custom-input">
+                                    </div>
+                                    <div class="input-container">
+                                        <label>Data de Fim</label>
+                                        <input type="date" id="fech-data-fim" class="custom-input">
+                                    </div>
+                                </div>
+
+                                <!-- Filtro por Romaneios -->
+                                <div class="form-row" id="row-filtro-romaneios" style="display: none;">
+                                    <div class="input-container">
+                                        <label>Romaneio Inicial (Nº)</label>
+                                        <input type="number" id="fech-rom-inicio" class="custom-input" placeholder="Ex: 1">
+                                    </div>
+                                    <div class="input-container">
+                                        <label>Romaneio Final (Nº)</label>
+                                        <input type="number" id="fech-rom-fim" class="custom-input" placeholder="Ex: 50">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-footer">
+                                <button class="btn-save" onclick="gerarPreviaFechamento()" style="width: auto;">
+                                    <i data-lucide="refresh-cw"></i> Calcular Prévia do Fechamento
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- RESULTADO DA PRÉVIA (Escondido inicialmente) -->
+                        <div id="container-previa-fechamento" style="display: none;">
+                            <!-- Resumo de Valores -->
+                            <div class="resumo-card-fin">
+                                <div class="card-val-fin">
+                                    <span class="val-title">Salário Fixo</span>
+                                    <span class="val-num" id="fech-resumo-salario">R$ 0,00</span>
+                                </div>
+                                <div class="card-val-fin">
+                                    <span class="val-title">Total Comissões</span>
+                                    <span class="val-num" id="fech-resumo-comissoes" style="color: #10b981;">+ R$ 0,00</span>
+                                </div>
+                                <div class="card-val-fin">
+                                    <span class="val-title">Desconto Vales</span>
+                                    <span class="val-num" id="fech-resumo-vales" style="color: #ef4444;">- R$ 0,00</span>
+                                </div>
+                                <div class="card-val-fin net-pay">
+                                    <span class="val-title">Saldo Líquido</span>
+                                    <span class="val-num" id="fech-resumo-liquido">R$ 0,00</span>
+                                </div>
+                            </div>
+
+                            <!-- Listagem de Cargas e Comissões do Período -->
+                            <div class="form-card" style="margin-bottom: 25px;">
+                                <div class="form-header">
+                                    <div class="header-icon" style="background: #e0f2fe; color: #0284c7;"><i data-lucide="truck"></i></div>
+                                    <div>
+                                        <h3>Cargas Inclusas no Período</h3>
+                                        <p>Lista de romaneios associados ao motorista no intervalo selecionado</p>
+                                    </div>
+                                </div>
+                                <div class="form-body" style="padding: 0; overflow-x: auto;">
+                                    <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr>
+                                                <th>Romaneio</th>
+                                                <th>Data</th>
+                                                <th>Qtd Toras</th>
+                                                <th>Vol. Bruto (m³)</th>
+                                                <th>Valor Frete (m³)</th>
+                                                <th>Frete Total (R$)</th>
+                                                <th>Comissão (R$)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fech-tabela-cargas"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Seleção de Vales em Aberto para Desconto -->
+                            <div class="form-card" style="margin-bottom: 25px;">
+                                <div class="form-header">
+                                    <div class="header-icon" style="background: #fee2e2; color: #ef4444;"><i data-lucide="banknote"></i></div>
+                                    <div>
+                                        <h3>Adiantamentos (Vales) Disponíveis</h3>
+                                        <p>Selecione quais vales serão descontados neste fechamento de pagamento</p>
+                                    </div>
+                                </div>
+                                <div class="form-body" style="padding: 0; overflow-x: auto;">
+                                    <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50px; text-align: center;"><input type="checkbox" id="fech-vales-select-all" onchange="toggleSelectAllValesPrevia(this)"></th>
+                                                <th>Data</th>
+                                                <th>Valor</th>
+                                                <th>Descrição</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fech-tabela-vales-previa"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Consolidação -->
+                            <div class="form-card">
+                                <div class="form-header">
+                                    <div class="header-icon" style="background: #fef3c7; color: #d97706;"><i data-lucide="file-signature"></i></div>
+                                    <div>
+                                        <h3>Consolidar e Fechar Período</h3>
+                                        <p>Adicione observações e salve o registro para gerar o recibo</p>
+                                    </div>
+                                </div>
+                                <div class="form-body">
+                                    <div class="input-container">
+                                        <label>Observações do Fechamento</label>
+                                        <textarea id="fech-observacoes" class="custom-input" style="height: 80px;" placeholder="Ex: Pagamento referente ao período de 01 a 15 de Agosto."></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-footer">
+                                    <button class="btn-save" onclick="confirmarSalvarFechamento()">
+                                        <i data-lucide="save"></i> Salvar e Consolidar Fechamento
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ABA 2: HISTÓRICO DE FECHAMENTOS -->
+                    <div id="tab-content-historico" class="tab-content" style="display: none;">
+                        <div class="form-card">
+                            <div class="form-header">
+                                <div class="header-icon" style="background: #f1f5f9; color: #64748b;"><i data-lucide="history"></i></div>
+                                <div>
+                                    <h3>Histórico de Fechamentos Realizados</h3>
+                                    <p>Consulte fechamentos passados, imprima recibos ou realize estornos</p>
+                                </div>
+                            </div>
+                            <div class="form-body" style="padding: 0; overflow-x: auto;">
+                                <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Motorista</th>
+                                            <th>Data Fechamento</th>
+                                            <th>Período</th>
+                                            <th>Salário (R$)</th>
+                                            <th>Comissões (R$)</th>
+                                            <th>Vales (R$)</th>
+                                            <th>Líquido (R$)</th>
+                                            <th style="width: 150px; text-align: center;">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fech-tabela-historico"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ABA 3: LANÇAMENTO DE VALES -->
+                    <div id="tab-content-vales" class="tab-content" style="display: none;">
+                        <div class="form-card" style="margin-bottom: 25px;">
+                            <div class="form-header">
+                                <div class="header-icon" style="background: #e0f2fe; color: #0284c7;"><i data-lucide="banknote"></i></div>
+                                <div>
+                                    <h3>Novo Adiantamento (Vale)</h3>
+                                    <p>Cadastre vales que o motorista pegar adiantado durante o mês</p>
+                                </div>
+                            </div>
+                            <div class="form-body">
+                                <input type="hidden" id="vale-id">
+                                <div class="form-row">
+                                    <div class="input-container">
+                                        <label>Motorista</label>
+                                        <select id="vale-motorista-id" class="custom-input">
+                                            <option value="">Selecione o Motorista...</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-container">
+                                        <label>Valor (R$)</label>
+                                        <input type="text" id="vale-valor" class="custom-input" placeholder="0,00" onkeyup="mascaraMoeda(this)">
+                                    </div>
+                                    <div class="input-container">
+                                        <label>Data</label>
+                                        <input type="date" id="vale-data" class="custom-input">
+                                    </div>
+                                </div>
+                                <div class="input-container">
+                                    <label>Descrição / Motivo</label>
+                                    <input type="text" id="vale-descricao" class="custom-input" placeholder="Ex: Conserto de pneu, Adiantamento quinzenal, etc.">
+                                </div>
+                            </div>
+                            <div class="form-footer">
+                                <button class="btn-save" onclick="salvarValeMotorista()" style="width: auto;">
+                                    <i data-lucide="save"></i> Salvar Vale
+                                </button>
+                                <button class="btn-cancel" id="btn-cancelar-vale" onclick="resetFormVale()" style="display: none; width: auto;">
+                                    Cancelar Edição
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- LISTAGEM DE VALES -->
+                        <div class="form-card">
+                            <div class="form-header">
+                                <div class="header-icon" style="background: #f1f5f9; color: #64748b;"><i data-lucide="list"></i></div>
+                                <div>
+                                    <h3>Vales Lançados no Sistema</h3>
+                                    <p>Lista de adiantamentos lançados e seus status de pagamento</p>
+                                </div>
+                            </div>
+                            <div class="form-body" style="padding: 0; overflow-x: auto;">
+                                <table class="custom-table" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Motorista</th>
+                                            <th>Valor</th>
+                                            <th>Descrição</th>
+                                            <th>Status</th>
+                                            <th style="width: 100px; text-align: center;">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="vale-tabela-lista"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL DE RECIBO DETALHADO DO FECHAMENTO (IMPRESSÃO) -->
+                <div id="modal-recibo-fechamento" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+                    <div class="form-card" style="max-width: 800px; width: 100%; max-height: 90vh; display: flex; flex-direction: column;">
+                        <div class="form-header" style="flex-shrink: 0; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                            <div class="header-icon" style="background: #dcfce7; color: #10b981;"><i data-lucide="receipt"></i></div>
+                            <div style="flex-grow: 1;">
+                                <h3>Recibo de Fechamento de Contas</h3>
+                                <p id="recibo-subtitulo">Consolidado do período</p>
+                            </div>
+                            <button class="btn-cancel" onclick="fecharModalRecibo()" style="width: auto; padding: 5px 12px; margin: 0; background: transparent; color: var(--text-main); border: 1px solid var(--border-color);">
+                                <i data-lucide="x"></i> Fechar
+                            </button>
+                        </div>
+                        <div class="form-body" id="recibo-impressao-conteudo" style="flex-grow: 1; overflow-y: auto; padding: 20px; font-family: 'Courier New', monospace; font-size: 0.85rem; color: #000; background: #fff;">
+                            <!-- O conteúdo do recibo será gerado dinamicamente via JS -->
+                        </div>
+                        <div class="form-footer" style="flex-shrink: 0; display: flex; gap: 10px; justify-content: flex-end; padding-top: 15px; border-top: 1px solid var(--border-color);">
+                            <button class="btn-cancel" onclick="fecharModalRecibo()" style="width: auto;">
+                                <i data-lucide="x"></i> Fechar Janela
+                            </button>
+                            <button class="btn-save" onclick="imprimirReciboConteudo()" style="width: auto; background: #0284c7;">
+                                <i data-lucide="printer"></i> Imprimir Recibo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ROMANEIOS DE ENTRADA -->
+                <div id="v-romaneios" class="view">
+                    <!-- CARD: FORMULARIO DE CRIACAO -->
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon rom-icon-azul"><i data-lucide="clipboard-plus"></i></div>
+                            <div>
+                                <h3 id="rom-form-titulo">Novo Romaneio de Entrada</h3>
+                                <p>Registre a chegada de um lote de toras ao pátio</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <input type="hidden" id="rom-id">
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Número do Romaneio
+                                        <span class="rom-badge-auto">
+                                            <i data-lucide="zap" style="width:11px;height:11px;display:inline;"></i> Gerado automaticamente
+                                        </span>
+                                    </label>
+                                    <input type="text" id="rom-numero" class="custom-input readonly-field rom-input-numero"
+                                        readonly tabindex="-1"
+                                        placeholder="Carregando número...">
+                                </div>
+                                <div class="input-container">
+                                    <label>Data de Entrada</label>
+                                    <input type="date" id="rom-data" class="custom-input">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                                        Fornecedor
+                                        <a href="#" onclick="carregarTela('fornecedores')" class="rom-link-cadastrar">
+                                            <i data-lucide="plus-circle" style="width: 12px; height: 12px;"></i> Cadastrar
+                                        </a>
+                                    </label>
+                                    <select id="rom-fornecedor-id" class="custom-input">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="input-container">
+                                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                                        Motorista
+                                        <a href="#" onclick="carregarTela('motoristas')" class="rom-link-cadastrar">
+                                            <i data-lucide="plus-circle" style="width: 12px; height: 12px;"></i> Cadastrar
+                                        </a>
+                                    </label>
+                                    <select id="rom-motorista-id" class="custom-input">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="input-container" style="grid-column: span 2;">
+                                    <label>Observações</label>
+                                    <input type="text" id="rom-observacoes" class="custom-input" placeholder="Informações adicionais (opcional)">
+                                </div>
+                            </div>
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Valor do Frete Bruto (R$/m³)</label>
+                                    <input type="text" id="rom-frete-valor" class="custom-input" placeholder="0,00" oninput="mascaraFrete(this)">
+                                </div>
+                                <div class="input-container">
+                                    <label>Valor Total do Frete Bruto (R$)</label>
+                                    <input type="text" id="rom-frete-total" class="custom-input readonly-field rom-input-frete-total" readonly placeholder="0,00">
+                                </div>
+                            </div>
+
+                            <!-- SEÇÃO: ADICIONAR TORAS AO ROMANEIO -->
+                            <div class="form-section-title rom-section-divider">Adicionar Toras ao Romaneio</div>
+                            
+                            <div class="form-row" id="sub-form-tora-romaneio">
+                                <div class="input-container">
+                                    <label>Código / Número</label>
+                                    <input type="text" id="rom-tora-codigo" class="custom-input"
+                                        onblur="aplicarMascaraNumero(this)" maxlength="10"
+                                        placeholder="Ex: 001">
+                                </div>
+                                <div class="input-container">
+                                    <label>Espécie</label>
+                                    <select id="rom-tora-especie" class="custom-input" onchange="calcularCubagemSubForm()"></select>
+                                </div>
+                                <div class="input-container">
+                                    <label>Lote de Destino</label>
+                                    <select id="rom-tora-lote" class="custom-input"></select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Rodo (cm)</label>
+                                    <input type="number" id="rom-tora-rodo" oninput="calcularCubagemSubForm()"
+                                        class="custom-input highlight-focus" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Comprimento (m)</label>
+                                    <input type="text" id="rom-tora-comprimento"
+                                        oninput="mascaraComprimento(this); calcularCubagemSubForm()"
+                                        onblur="finalizarComprimento(this); calcularCubagemSubForm()"
+                                        class="custom-input highlight-focus" placeholder="0,00">
+                                </div>
+                                <div class="input-container">
+                                    <label>Rodo Bruto (cm)</label>
+                                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                                        <input type="number" id="rom-tora-rodo-bruto" oninput="calcularCubagemSubForm()"
+                                            class="custom-input highlight-focus readonly-field" readonly placeholder="0" style="width: 100%; padding-right: 35px;">
+                                        <button type="button" class="btn-lock-toggle rom-btn-lock" onclick="toggleLockField('rom-tora-rodo-bruto', this)">
+                                            <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="input-container">
+                                    <label>Comp. Bruto (m)</label>
+                                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                                        <input type="text" id="rom-tora-comprimento-bruto"
+                                            oninput="mascaraComprimento(this); calcularCubagemSubForm()"
+                                            onblur="finalizarComprimento(this); calcularCubagemSubForm()"
+                                            class="custom-input highlight-focus readonly-field" readonly placeholder="0,00" style="width: 100%; padding-right: 35px;">
+                                        <button type="button" class="btn-lock-toggle rom-btn-lock" onclick="toggleLockField('rom-tora-comprimento-bruto', this)">
+                                            <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Desconto 1 (cm)</label>
+                                    <input type="number" id="rom-tora-d1" oninput="calcularCubagemSubForm()"
+                                        class="custom-input highlight-focus" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Desconto 2 (cm)</label>
+                                    <input type="number" id="rom-tora-d2" oninput="calcularCubagemSubForm()"
+                                        class="custom-input highlight-focus" placeholder="0">
+                                </div>
+                                <div class="input-container">
+                                    <label>Tot. Desconto (m³)</label>
+                                    <input type="text" id="rom-tora-desconto-ver" class="custom-input readonly-field"
+                                        readonly placeholder="0,000" tabindex="-1">
+                                </div>
+                            </div>
+
+                            <div class="rom-result-panel">
+                                <div class="result-info">
+                                    <span>Volume Líquido Calculado</span>
+                                    <h2 id="rom-tora-volume-result" class="rom-volume-value">0,000 m³</h2>
+                                    <small id="rom-tora-detalhe-calculo" class="text-muted" style="font-size: 11px; opacity: 0.8;"></small>
+                                </div>
+                                <div class="rom-result-actions">
+                                    <button type="button" class="btn-cancel rom-btn-cancelar-tora" id="btn-cancelar-tora-romaneio" onclick="cancelarEdicaoToraTempList()" style="display: none;">
+                                        <i data-lucide="x-circle"></i> Cancelar
+                                    </button>
+                                    <button type="button" class="btn-save" id="btn-adicionar-tora-romaneio" onclick="adicionarToraTempList()" style="background: var(--accent-color); padding: 12px 25px;">
+                                        <i data-lucide="plus-circle"></i> Adicionar Tora
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- TABELA TEMPORÁRIA DE TORAS -->
+                            <div style="margin-top: 30px;">
+                                <div class="form-section-title">Toras Adicionadas a este Romaneio</div>
+                                <div class="rom-tabela-wrapper">
+                                    <table class="custom-table" style="margin: 0; min-width: 750px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Número</th>
+                                                <th>Espécie</th>
+                                                <th>Lote</th>
+                                                <th style="text-align:center;">Rodo (Líq/Bruto)</th>
+                                                <th style="text-align:center;">Comp (Líq/Bruto)</th>
+                                                <th style="text-align:center;">Oco (D1xD2)</th>
+                                                <th style="text-align:center;">Vol. Líquido (m³)</th>
+                                                <th style="text-align:center;">Vol. Bruto (m³)</th>
+                                                <th style="text-align:right; padding-right: 20px;">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lista-toras-romaneio-temp">
+                                            <tr>
+                                                <td colspan="9" class="rom-empty-msg">Nenhuma tora vinculada a este romaneio ainda.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="resumo-temp-totais" class="rom-resumo-totais">
+                                    <div>Total Toras: <span id="tot-pecas-temp" class="rom-tot-pecas">0</span></div>
+                                    <div>Total Líquido: <span id="tot-liq-temp" class="rom-tot-liq">0,000 m³</span></div>
+                                    <div>Total Bruto: <span id="tot-bruto-temp" class="rom-tot-bruto">0,000 m³</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" id="btn-salvar-romaneio" onclick="salvarRomaneio()">
+                                <i data-lucide="save"></i> <span>Salvar Romaneio</span>
+                            </button>
+                            <button class="btn-cancel" id="btn-cancelar-romaneio" style="display:none;" onclick="resetFormRomaneio()">
+                                Cancelar Edição
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CARD: LISTA DE ROMANEIOS -->
+                    <div class="form-card" id="card-lista-romaneios">
+                        <div class="form-header">
+                            <div class="header-icon rom-icon-azul"><i data-lucide="clipboard-list"></i></div>
+                            <div>
+                                <h3>Romaneios Registrados</h3>
+                                <p>Clique em "Ver Detalhes" para visualizar as toras e volumes</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                            <table class="custom-table" style="min-width: 680px;">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Data</th>
+                                        <th>Fornecedor</th>
+                                        <th>Motorista</th>
+                                        <th style="text-align:center;">Toras</th>
+                                        <th style="text-align:center;">Vol. Líquido (m³)</th>
+                                        <th style="text-align:center;">Vol. Bruto (m³)</th>
+                                        <th style="text-align:right;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-romaneios-corpo"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PAINEL DE DETALHES DO ROMANEIO (oculto por padrao) -->
+                    <div class="form-card rom-painel-detalhes" id="painel-detalhes-romaneio" style="display:none; margin-top: 30px;">
+                        <div class="form-header rom-detalhe-header">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="header-icon rom-icon-azul"><i data-lucide="file-search"></i></div>
+                                <div>
+                                    <h3 id="detalhe-rom-titulo">Detalhes do Romaneio</h3>
+                                    <p id="detalhe-rom-info" class="rom-detalhe-info"></p>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap: 10px;">
+                                <button class="btn-save rom-btn-imprimir" onclick="imprimirRomaneio()">
+                                    <i data-lucide="printer"></i> Imprimir PDF
+                                </button>
+                                <button class="btn-cancel" onclick="fecharDetalhesRomaneio()" style="display:block;">
+                                    <i data-lucide="x"></i> Fechar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TOTAIS BRUTO / LIQUIDO POR ESPECIE -->
+                        <div class="form-body">
+                            <div class="form-section-title">Resumo por Espécie</div>
+                            <div id="detalhe-rom-resumo" style="margin-bottom: 20px;"></div>
+
+                            <div class="form-section-title">Listagem de Toras</div>
+                            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px;">
+                                <table class="custom-table" style="min-width: 700px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Número</th>
+                                            <th>Espécie</th>
+                                            <th>Lote</th>
+                                            <th style="text-align:center;">Rodo (cm)</th>
+                                            <th style="text-align:center;">Comp (m)</th>
+                                            <th style="text-align:center;">Oco</th>
+                                            <th style="text-align:center;">Vol. Líquido (m³)</th>
+                                            <th style="text-align:center;">Vol. Bruto (m³)</th>
+                                            <th style="text-align:center;">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detalhe-rom-toras"></tbody>
+                                </table>
+                            </div>
+
+
+                            <!-- TOTAIS RODAPÉ -->
+                            <div id="detalhe-rom-totais" style="margin-top: 20px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- FIM VIEW ROMANEIOS -->
+
+                <div id="v-baixas" class="view">
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon bg-dash-red"><i data-lucide="arrow-up-right"></i></div>
+                            <div>
+                                <h3>Baixa de Estoque / Romaneio</h3>
+                                <p>Selecione os números para saída do pátio</p>
+                            </div>
+                        </div>
+
+                        <div class="form-body">
+                            <div class="form-row" style="margin-bottom: 20px;">
+                                <div class="input-container">
+                                    <label>Data da Saída</label>
+                                    <input type="date" id="saida-data" class="custom-input">
+                                </div>
+                                <div class="input-container" style="grid-column: span 2;">
+                                    <label>Adicionar Número</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="buscar-tora-codigo" class="custom-input"
+                                            placeholder="Digite o Número (Ex: 001)" maxlength="10"
+                                            onblur="aplicarMascaraNumero(this)"
+                                            onkeyup="if(event.key==='Enter') { aplicarMascaraNumero(this); buscarEAdicionarALista(); }">
+
+                                        <button class="btn-save" onclick="buscarEAdicionarALista()">
+                                            <i data-lucide="plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Espécie</th>
+                                        <th>Lote</th>
+                                        <th>Medidas</th>
+                                        <th>Volume (m³)</th>
+                                        <th style="text-align: right;">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-baixa-temporaria"></tbody>
+                            </table>
+
+                            <div class="result-panel" style="margin-top: 20px;">
+                                <div class="result-info">
+                                    <span>Resumo do Romaneio</span>
+                                    <h2 id="total-volume-baixa">0,000 m³</h2>
+                                    <p id="total-toras-baixa" style="font-size: 14px; font-weight: 600; opacity: 0.85;">
+                                        0 Toras selecionadas
+                                    </p>
+                                </div>
+                                <div class="result-icon"><i data-lucide="file-text"></i></div>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" style="background: #10b981;" onclick="processarBaixaEGerarPDF()">
+                                <i data-lucide="file-check"></i> Finalizar e Gerar PDF
+                            </button>
+                            <button class="btn-cancel" onclick="limparListaTemporaria()" style="display: block;">
+                                <i data-lucide="refresh-cw"></i> Limpar Lista
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-estoque" class="view">
+                    <div class="form-card">
+                        <div class="form-header"
+                            style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="header-icon bg-dash-blue">
+                                    <i data-lucide="database"></i>
+                                </div>
+                                <div>
+                                    <h3>Controle de Estoque Geral</h3>
+                                    <p>Monitore o saldo das toras no pátio e o histórico de baixas</p>
+                                </div>
+                            </div>
+                            <button class="btn-save" onclick="carregarTela('entradas')"
+                                style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-radius: 8px; font-weight: 600;">
+                                <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i>
+                                Cadastrar Tora
+                            </button>
+                        </div>
+
+                        <div class="form-body">
+                            <div class="form-row" style="margin-bottom: 25px;">
+                                <div class="input-container bg-input border-subtle"
+                                    style="padding: 15px; border-radius: 12px; border: 1px solid;">
+                                    <label
+                                        style="color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Total
+                                        de Toras</label>
+                                    <div id="indicador-qtd-patio"
+                                        style="font-size: 28px; font-weight: 800; color: #6366f1;">0</div>
+                                </div>
+                                <div class="input-container"
+                                    style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                                    <label
+                                        style="color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Volume
+                                        em Pátio (m³)</label>
+                                    <div id="indicador-vol-patio"
+                                        style="font-size: 28px; font-weight: 800; color: #10b981;">0,000</div>
+                                </div>
+                            </div>
+
+                            <div class="form-section-title">Filtros de Consulta</div>
+                            <div class="filtros-estoque">
+                                <div>
+                                    <label>Status:</label>
+                                    <select id="filtro-estoque-status" class="custom-input"
+                                        onchange="carregarEstoque(true)">
+                                        <option value="pátio">No Pátio (Disponível)</option>
+                                        <option value="serrada">Serradas (Baixadas)</option>
+                                        <option value="todos">Todas as Toras</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Lote:</label>
+                                    <select id="filtro-estoque-lote" class="custom-input"
+                                        onchange="carregarEstoque(true)">
+                                        <option value="todos">Todos os Lotes</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Espécie:</label>
+                                    <select id="filtro-estoque-especie" class="custom-input"
+                                        onchange="carregarEstoque(true)">
+                                        <option value="todos">Todas as Espécies</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Número:</label>
+                                    <input type="text" id="filtro-estoque-codigo" class="custom-input"
+                                        placeholder="Digite e aperte Enter..." maxlength="10"
+                                        onblur="aplicarMascaraNumero(this)"
+                                        onkeyup="if(event.key==='Enter') { aplicarMascaraNumero(this); carregarEstoque(true); }">
+                                </div>
+                                <div style="display: flex; align-items: flex-end;">
+                                    <button class="btn-save" onclick="carregarEstoque(true)" title="Atualizar">
+                                        <i data-lucide="refresh-ccw"
+                                            style="width: 20px; height: 20px; color: white;"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Espécie</th>
+                                        <th>Lote</th>
+                                        <th>Medidas (R/C/O)</th>
+                                        <th>Volume (m³)</th>
+                                        <th>Status</th>
+                                        <th>Data Entrada</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-estoque-corpo"></tbody>
+                            </table>
+                            <div class="container-acoes-tabela">
+                                <button id="btn-carregar-mais" class="btn-carregar-mais" onclick="carregarEstoque()">
+                                    <i data-lucide="refresh-cw"></i>
+                                    Carregar mais toras...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-relatorios" class="view">
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="bar-chart-3"></i></div>
+                            <div>
+                                <h3>Relatórios Gerenciais</h3>
+                                <p>Filtros avançados para exportação de dados e conferência de seu Estoque</p>
+                            </div>
+                        </div>
+
+                        <div class="form-body">
+                            <div class="form-section-title">Parâmetros do Relatório</div>
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Tipo de Relatório</label>
+                                    <select id="rel-tipo" class="custom-input">
+                                        <option value="geral">Relatório Geral (Todo Histórico)</option>
+                                        <option value="baixas">Relatório de Baixas (Saídas)</option>
+                                        <option value="entradas">Relatório de Entradas</option>
+                                        <option value="estoque">Inventário Atual (Saldo)</option>
+                                    </select>
+                                </div>
+                                <div class="input-container">
+                                    <label>Data Início</label>
+                                    <input type="date" id="rel-data-inicio" class="custom-input">
+                                </div>
+                                <div class="input-container">
+                                    <label>Data Fim</label>
+                                    <input type="date" id="rel-data-fim" class="custom-input">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Espécie</label>
+                                    <select id="rel-especie" class="custom-input">
+                                        <option value="todas">Todas as Espécies</option>
+                                    </select>
+                                </div>
+                                <div class="input-container">
+                                    <label>Lote</label>
+                                    <select id="rel-lote" class="custom-input">
+                                        <option value="todos">Todos os Lotes</option>
+                                    </select>
+                                </div>
+                                <div class="input-container"></div>
+                            </div>
+
+                            <div class="result-panel" style="margin-top: 20px;">
+                                <div class="result-info">
+                                    <span>Volume Total Filtrado</span>
+                                    <h2 id="rel-total-vol">0,000 m³</h2>
+                                    <small id="rel-total-qtd">0 toras encontradas</small>
+                                </div>
+                                <div class="result-icon"><i data-lucide="layers"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="form-footer">
+                            <button class="btn-save" onclick="gerarPreviaRelatorio()" style="background: #6366f1;">
+                                <i data-lucide="eye"></i> <span>Visualizar</span>
+                            </button>
+
+                            <button class="btn-save" onclick="exportarRelatorioPDF()" style="background: #ef4444;">
+                                <i data-lucide="file-text"></i> <span>PDF</span>
+                            </button>
+
+                            <button class="btn-save" onclick="exportarRelatorioExcel()" style="background: #10b981;">
+                                <i data-lucide="sheet"></i> <span>Excel</span>
+                            </button>
+
+                            <button class="btn-cancel" onclick="limparFiltrosRelatorio()"
+                                style="display: block; margin-left: auto;">
+                                Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="table"></i></div>
+                            <div>
+                                <h3>Pré-visualização dos Dados</h3>
+                                <p>Resultado da busca baseada nos filtros aplicados acima</p>
+                            </div>
+                        </div>
+                        <div class="form-body" style="padding: 0;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 10%;">Número</th>
+                                        <th style="width: 20%;">Espécie</th>
+                                        <th style="width: 20%;">Lote</th>
+                                        <th style="width: 20%; text-align: center;">Medidas (cm x m)</th>
+                                        <th style="width: 15%; text-align: center;">Volume (m³)</th>
+                                        <th style="width: 15%; text-align: right; padding-right: 20px;">Entrada / Saída
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rel-tabela-corpo">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                            <i data-lucide="info"
+                                                style="display: inline-block; vertical-align: middle; margin-right: 8px;"></i>
+                                            Ajuste os filtros e clique em "Visualizar" para carregar os dados.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div id="container-btn-rel-mais"
+                                style="display: flex; justify-content: center; width: 100%; margin-top: 30px; margin-bottom: 50px;">
+                                <button id="btn-rel-carregar-mais" class="btn-carregar-mais"
+                                    style="display: none; min-width: 300px;" onclick="gerarPreviaRelatorio(false)">
+                                    <i data-lucide="refresh-cw"></i> Carregar mais registros...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="container-resumos" style="margin-bottom: 30px;"></div>
+
+                    <!-- CARD: RELATÓRIO DE ENTRADAS POR FORNECEDOR -->
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon rom-icon-azul"><i data-lucide="truck"></i></div>
+                            <div>
+                                <h3>Entradas por Fornecedor</h3>
+                                <p>Filtros por fornecedor, datas e intervalo de romaneios com detalhes de frete e volumes</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Fornecedor</label>
+                                    <select id="rel-forn-id" class="custom-input">
+                                        <option value="todos">Todos os Fornecedores</option>
+                                    </select>
+                                </div>
+                                <div class="input-container">
+                                    <label>Data Início</label>
+                                    <input type="date" id="rel-forn-inicio" class="custom-input">
+                                </div>
+                                <div class="input-container">
+                                    <label>Data Fim</label>
+                                    <input type="date" id="rel-forn-fim" class="custom-input">
+                                </div>
+                            </div>
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Romaneio Inicial (De)</label>
+                                    <input type="text" id="rel-forn-rom-inicio" class="custom-input" placeholder="Ex: 01/2026">
+                                </div>
+                                <div class="input-container">
+                                    <label>Romaneio Final (Até)</label>
+                                    <input type="text" id="rel-forn-rom-fim" class="custom-input" placeholder="Ex: 50/2026">
+                                </div>
+                                <div class="input-container" style="visibility: hidden;"></div>
+                            </div>
+                            <div class="form-footer" style="padding: 15px 0 0 0; background: transparent; border-top: none; display: flex; gap: 10px;">
+                                <button class="btn-save" onclick="gerarRelatorioFornecedor()" style="background: #6366f1;">
+                                    <i data-lucide="eye"></i> <span>Visualizar</span>
+                                </button>
+                                <button class="btn-save" onclick="exportarRelatorioFornecedorPDF()" style="background: #ef4444;">
+                                    <i data-lucide="file-text"></i> <span>PDF</span>
+                                </button>
+                                <button class="btn-cancel" onclick="limparRelatorioFornecedor()" style="display: block; margin-left: auto;">
+                                    Limpar Filtros
+                                </button>
+                            </div>
+
+                            <div class="rom-tabela-wrapper" style="margin-top: 25px; display: none;" id="rel-forn-tabela-container">
+                                <table class="custom-table" style="min-width: 800px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Número Romaneio</th>
+                                            <th>Data Entrada</th>
+                                            <th>Fornecedor</th>
+                                            <th style="text-align: center;">Total Toras</th>
+                                            <th style="text-align: center;">Vol. Líquido (m³)</th>
+                                            <th style="text-align: center;">Vol. Bruto (m³)</th>
+                                            <th style="text-align: right;">Frete Total (R$)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rel-forn-tabela-corpo"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="rom-resumo-totais" id="rel-forn-resumo" style="display: none; border-top: 1px solid var(--border-color); margin-top: 20px; padding-top: 15px;">
+                                <div>Total Romaneios: <span id="tot-forn-rom" style="color: var(--text-dark);">0</span></div>
+                                <div>Total Toras: <span id="tot-forn-toras" style="color: var(--text-dark);">0</span></div>
+                                <div>Total Líquido: <span id="tot-forn-liq" style="color: #10b981;">0,000 m³</span></div>
+                                <div>Total Bruto: <span id="tot-forn-bruto" style="color: #0284c7;">0,000 m³</span></div>
+                                <div>Total Frete: <span id="tot-forn-frete" style="color: #f59e0b;">R$ 0,00</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD: RELATÓRIO DE CARGAS POR MOTORISTA & COMISSÃO -->
+                    <div class="form-card" style="margin-bottom: 30px;">
+                        <div class="form-header">
+                            <div class="header-icon rom-icon-azul"><i data-lucide="award"></i></div>
+                            <div>
+                                <h3>Cargas por Motorista (Comissão)</h3>
+                                <p>Filtros por motorista, datas e intervalo de romaneios para apuração de fretes e comissões</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Motorista</label>
+                                    <select id="rel-moto-id" class="custom-input">
+                                        <option value="todos">Todos os Motoristas</option>
+                                    </select>
+                                </div>
+                                <div class="input-container">
+                                    <label>Data Início</label>
+                                    <input type="date" id="rel-moto-inicio" class="custom-input">
+                                </div>
+                                <div class="input-container">
+                                    <label>Data Fim</label>
+                                    <input type="date" id="rel-moto-fim" class="custom-input">
+                                </div>
+                            </div>
+                            <div class="form-row" style="margin-top: 15px;">
+                                <div class="input-container">
+                                    <label>Romaneio Inicial (De)</label>
+                                    <input type="text" id="rel-moto-rom-inicio" class="custom-input" placeholder="Ex: 01/2026">
+                                </div>
+                                <div class="input-container">
+                                    <label>Romaneio Final (Até)</label>
+                                    <input type="text" id="rel-moto-rom-fim" class="custom-input" placeholder="Ex: 50/2026">
+                                </div>
+                                <div class="input-container" style="visibility: hidden;"></div>
+                            </div>
+                            <div class="form-footer" style="padding: 15px 0 0 0; background: transparent; border-top: none; display: flex; gap: 10px;">
+                                <button class="btn-save" onclick="gerarRelatorioMotorista()" style="background: #6366f1;">
+                                    <i data-lucide="eye"></i> <span>Visualizar</span>
+                                </button>
+                                <button class="btn-save" onclick="exportarRelatorioMotoristaPDF()" style="background: #ef4444;">
+                                    <i data-lucide="file-text"></i> <span>PDF</span>
+                                </button>
+                                <button class="btn-cancel" onclick="limparRelatorioMotorista()" style="display: block; margin-left: auto;">
+                                    Limpar Filtros
+                                </button>
+                            </div>
+
+                            <div class="rom-tabela-wrapper" style="margin-top: 25px; display: none;" id="rel-moto-tabela-container">
+                                <table class="custom-table" style="min-width: 900px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Número Romaneio</th>
+                                            <th>Data Entrada</th>
+                                            <th>Motorista</th>
+                                            <th style="text-align: center;">Total Toras</th>
+                                            <th style="text-align: center;">Vol. Bruto (m³)</th>
+                                            <th style="text-align: right;">Frete Total (R$)</th>
+                                            <th style="text-align: center;">Comissão (%)</th>
+                                            <th style="text-align: right;">Valor Comissão (R$)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rel-moto-tabela-corpo"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="rom-resumo-totais" id="rel-moto-resumo" style="display: none; border-top: 1px solid var(--border-color); margin-top: 20px; padding-top: 15px;">
+                                <div>Total Cargas: <span id="tot-moto-cargas" style="color: var(--text-dark);">0</span></div>
+                                <div>Total Toras: <span id="tot-moto-toras" style="color: var(--text-dark);">0</span></div>
+                                <div>Total Bruto: <span id="tot-moto-bruto" style="color: #0284c7;">0,000 m³</span></div>
+                                <div>Total Frete: <span id="tot-moto-frete" style="color: #f59e0b;">R$ 0,00</span></div>
+                                <div>Comissão Total: <span id="tot-moto-comissao" style="color: #10b981;">R$ 0,00</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div id="v-logs" class="view">
+                    <div class="form-card">
+                        <div class="form-header">
+                            <div class="header-icon bg-input border-subtle" style="color: var(--text-main);">
+                                <i data-lucide="scroll-text"></i>
+                            </div>
+                            <div>
+                                <h3>Log de Sistemas</h3>
+                                <p>Rastreamento de atividades e alterações no inventário</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="filtros-estoque bg-input border-subtle"
+                                style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 10px; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid;">
+                                <div>
+                                    <label>Ação:</label>
+                                    <select id="log-filtro-acao" class="custom-input">
+                                        <option value="todos">Todas as ações</option>
+                                        <option value="ENTRADA">Entradas de Toras</option>
+                                        <option value="EDICAO">Edições de Toras</option>
+                                        <option value="BAIXA">Baixas/Romaneio</option>
+                                        <option value="LOTE">Cadastro de Lotes</option>
+                                        <option value="EXCLUSAO">Exclusões</option>
+                                        <option value="ROMANEIO">Romaneios</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Início:</label>
+                                    <input type="date" id="input-filtro-data-inicio-logs" class="custom-input">
+                                </div>
+                                <div>
+                                    <label>Fim:</label>
+                                    <input type="date" id="input-filtro-data-fim-logs" class="custom-input">
+                                </div>
+                                <div style="display: flex; align-items: flex-end; gap: 5px;">
+                                    <button onclick="carregarLogs()" class="btn-save"
+                                        style="background: #64748b; height: 42px;">
+                                        <i data-lucide="search"></i>
+                                    </button>
+                                    <button onclick="limparFiltrosLogs()" class="btn-save"
+                                        style="background: #cbd5e1; color: #475569; height: 42px;">
+                                        <i data-lucide="refresh-cw"></i>
+                                    </button>
+                                    <button type="button" onclick="exportarLogsPDF()" class="btn-save"
+                                        style="background: #0f172a; height: 42px;">
+                                        <i data-lucide="file-text"></i> Exportar PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 160px;">Data/Hora</th>
+                                        <th style="width: 120px;">Usuário</th>
+                                        <th style="width: 100px;">Ação</th>
+                                        <th>Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-logs">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="v-ativacao" class="view">
+                    <div class="form-card" style="max-width: 500px; margin: 50px auto;">
+                        <div class="form-header">
+                            <div class="header-icon"><i data-lucide="shield-check"></i></div>
+                            <div>
+                                <h2>Ativação do Sistema</h2>
+                                <p>O software ainda não foi ativado nesta máquina.</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="input-container">
+                                <label>ID desta Máquina (Envie ao Administrador):</label>
+                                <input type="text" id="machine-id-display" class="custom-input" readonly>
+                            </div>
+                            <br>
+                            <div class="input-container">
+                                <label>Insira sua Chave de Licença:</label>
+                                <input type="text" id="license-key-input" class="custom-input"
+                                    placeholder="XXXX-XXXX-XXXX">
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button id="btn-activar" class="btn-save">Ativar Agora</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="v-configuracoes" class="view">
+                    <div class="form-card" style="margin-bottom: 20px; border-top: 4px solid #6366f1;">
+                        <div class="form-header">
+                            <div class="header-icon" style="background: #e0e7ff; color: #6366f1;"><i
+                                    data-lucide="database"></i></div>
+                            <div>
+                                <h3>Segurança dos Dados</h3>
+                                <p>Exportar cópia de segurança do inventário</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="bg-input border-subtle"
+                                style="display: flex; align-items: center; justify-content: space-between; padding: 20px; border-radius: 8px; border: 1px solid;">
+                                <div>
+                                    <h4 class="text-title" style="margin-bottom: 5px;">Gerar Backup (.db)</h4>
+                                    <p class="text-muted" style="font-size: 13px;">Crie uma cópia completa de todas as
+                                        suas
+                                        toras, espécies e lotes.</p>
+                                </div>
+                                <button class="btn-save" onclick="fazerBackup()"
+                                    style="width: auto; padding: 10px 25px;"><i data-lucide="download"></i> Salvar
+                                    Backup</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card" style="margin-bottom: 20px; border-top: 4px solid #10b981;">
+                        <div class="form-header">
+                            <div class="header-icon" style="background: #dcfce7; color: #10b981;"><i
+                                    data-lucide="clock"></i></div>
+                            <div>
+                                <h3>Backup Automático Agendado</h3>
+                                <p>Configure horários para salvar cópias de segurança automaticamente</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="form-row">
+                                <div class="input-container">
+                                    <label>Horários de Backup (Separados por vírgula)</label>
+                                    <input type="text" id="cfg-backup-horarios" class="custom-input"
+                                        placeholder="Ex: 12:00, 18:00">
+                                </div>
+                                <div class="input-container" style="grid-column: span 2;">
+                                    <label>Pasta de Destino (Google Drive)</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="cfg-backup-pasta" class="custom-input" style="flex: 1;"
+                                            readonly placeholder="Clique no botão para selecionar...">
+                                        <button class="btn-save" onclick="selecionarPastaBackup()"
+                                            style="background: #64748b; width: auto;">
+                                            <i data-lucide="folder-open"></i> Selecionar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="cfg-backup-ativo"
+                                    style="width: 18px; height: 18px; cursor: pointer;">
+                                <label for="cfg-backup-ativo" style="font-weight: 600; cursor: pointer;">Ativar Backup
+                                    Automático</label>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn-save" onclick="salvarConfigsBackup()">
+                                <i data-lucide="save"></i> Salvar Configurações de Backup
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-card" style="border-top: 4px solid #f87171;">
+                        <div class="form-header">
+                            <div class="header-icon" style="background: #fee2e2; color: #ef4444;"><i
+                                    data-lucide="alert-triangle"></i></div>
+                            <div>
+                                <h3>Zona de Perigo</h3>
+                                <p>Gerenciamento e manutenção do banco de dados</p>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="bg-dash-red border-subtle"
+                                style="display: flex; align-items: center; justify-content: space-between; padding: 20px; border-radius: 8px; border: 1px solid;">
+                                <div>
+                                    <h4 style="color: #991b1b; margin-bottom: 5px;">Resetar Banco de Dados</h4>
+                                    <p style="color: #b91c1c; font-size: 13px;">Apaga permanentemente todos os registros
+                                        do sistema.</p>
+                                </div>
+                                <button class="btn-cancel" onclick="resetarSistemaCompleto()"
+                                    style="background: #ef4444; color: white; border: none; padding: 10px 20px;">
+                                    <i data-lucide="trash-2"></i> Resetar Tudo
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-footer" style="background: #f8fafc; font-size: 12px; color: #64748b;">
+                            ToraControl v1.0.0 | Status: Conectado
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+
+    <script>
+        // ============================================================
+        // CONTROLE RESPONSIVO DA SIDEBAR
+        // ============================================================
+
+        const sidebar        = document.getElementById('sidebar');
+        const iconToggle     = document.getElementById('icon-toggle');
+        const overlay        = document.getElementById('sidebar-overlay');
+        const BREAKPOINT_MB  = 992; // px – abaixo disso entra em modo mobile
+
+        /** Verifica se estamos em tela mobile/tablet */
+        function isMobileView() {
+            return window.innerWidth <= BREAKPOINT_MB;
+        }
+
+        // --- Função existente (reescrita para suportar ambos os modos) ---
+        function toggleSidebar() {
+            if (isMobileView()) {
+                // Em mobile, usa o toggle do overlay
+                toggleSidebarMobile();
+            } else {
+                // Desktop: colapsa/expande a sidebar normalmente
+                sidebar.classList.toggle('minimized');
+                const isMinimized = sidebar.classList.contains('minimized');
+                if (iconToggle) {
+                    iconToggle.setAttribute('data-lucide', isMinimized ? 'chevron-right' : 'chevron-left');
+                    lucide.createIcons();
+                }
+                localStorage.setItem('sidebarMinimized', isMinimized ? '1' : '0');
+            }
+        }
+
+        /** Abre a sidebar em modo mobile (overlay) */
+        function toggleSidebarMobile() {
+            const isOpen = sidebar.classList.contains('mobile-open');
+            if (isOpen) {
+                fecharSidebarMobile();
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden'; // evita scroll de fundo
+            }
+        }
+
+        /** Fecha a sidebar em modo mobile */
+        function fecharSidebarMobile() {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // --- Fecha a sidebar mobile ao clicar em qualquer item de menu ---
+        document.querySelectorAll('#sidebar .components li').forEach(function(item) {
+            item.addEventListener('click', function() {
+                if (isMobileView()) {
+                    fecharSidebarMobile();
+                }
+            });
+        });
+
+        // --- Fecha a sidebar mobile ao clicar no botão "Sair" ---
+        const btnSair = document.querySelector('#sidebar .btn-sair');
+        if (btnSair) {
+            btnSair.addEventListener('click', function() {
+                if (isMobileView()) fecharSidebarMobile();
+            });
+        }
+
+        // --- Ao redimensionar: fecha se ficou desktop, reabre se ficou mobile ---
+        window.addEventListener('resize', function() {
+            if (!isMobileView()) {
+                // Voltou para desktop: remove classes mobile
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+
+                // Restaura estado minimizado salvo
+                if (localStorage.getItem('sidebarMinimized') === '1') {
+                    sidebar.classList.add('minimized');
+                } else {
+                    sidebar.classList.remove('minimized');
+                }
+            }
+        });
+
+        // --- Ao carregar: restaura estado salvo (somente em desktop) ---
+        (function iniciarSidebar() {
+            if (!isMobileView()) {
+                if (localStorage.getItem('sidebarMinimized') === '1') {
+                    sidebar.classList.add('minimized');
+                    if (iconToggle) {
+                        iconToggle.setAttribute('data-lucide', 'chevron-right');
+                        lucide.createIcons();
+                    }
+                }
+            }
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,48 @@
+# Dependências
+node_modules/
+**/node_modules/
+
+# Builds e Distribuição
+dist/
+dist_setup/
+dist-electron/
+dist-ssr/
+out/
+build/
+*.jsc
+
+# Arquivos de Ambiente e Segurança
+.env
+.env.*
+*.local
+private.key
+*.key
+!public.key
+
+# Bancos de Dados Locais
+*.db
+*.sqlite
+*.sqlite3
+toracontroll.db
+
+# Logs
+*.log
+logs/
+start_log.txt
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Arquivos Gerados e Cópias Temporárias
+renderer.js
+* - Copia.*
+* - Copia (2).*
+* copy.*
+* - Copy.*
+
+# IDEs e Sistema Operacional
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

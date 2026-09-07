@@ -1,0 +1,92 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "1.0.3",
+  "type": "module",
+  "main": "public/entry.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron:start": "cross-env NODE_ENV=development electron .",
+    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron:start\"",
+    "build:protect": "node protect.cjs",
+    "electron:build": "npm run build && npm run build:protect && electron-builder",
+    "electron:release": "npm run build && npm run build:protect && electron-builder --publish always"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
+    "bytenode": "^1.6.0",
+    "electron-updater": "^6.8.9",
+    "framer-motion": "^12.40.0",
+    "lucide-react": "^1.16.0",
+    "pdfmake": "^0.3.9",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router-dom": "^7.15.1",
+    "sql.js": "^1.14.1",
+    "sweetalert2": "^11.26.25",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^24.12.3",
+    "@types/pdfmake": "^0.3.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.7.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "javascript-obfuscator": "^5.6.0",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12",
+    "wait-on": "^9.0.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matteusitb/MTPROSistemadeRomaneios.git"
+  },
+  "build": {
+    "appId": "com.romaneio.madeiraserrada",
+    "productName": "MT PRO - Madeira Serrada",
+    "icon": "icon.ico",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "MATTEUSITB",
+      "repo": "MTPROSistemadeRomaneios"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "**/*",
+      "!public/electron.cjs",
+      "!src/**/*",
+      "!dist-electron/**/*",
+      "!.git/**/*",
+      "!.vscode/**/*"
+    ]
+  }
+}

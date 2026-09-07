@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>MT PRO - Gerador de Licenças RSA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #d946ef;
+      --primary-hover: #c084fc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Background Decorativo */
+    .blur-1 {
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 50%;
+      height: 50%;
+      background: rgba(217, 70, 239, 0.1);
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .blur-2 {
+      position: absolute;
+      bottom: -10%;
+      right: -10%;
+      width: 50%;
+      height: 50%;
+      background: rgba(139, 92, 246, 0.1);
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      padding: 20px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 40px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo-container {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%);
+      border-radius: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 16px auto;
+      box-shadow: 0 8px 24px rgba(217, 70, 239, 0.3);
+    }
+
+    .logo-icon {
+      font-size: 28px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      margin-bottom: 6px;
+      background: linear-gradient(to right, #f3f4f6, #d946ef);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Estilização para o Upload de Arquivo */
+    .file-dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.01);
+      position: relative;
+    }
+
+    .file-dropzone:hover {
+      border-color: var(--primary);
+      background: rgba(217, 70, 239, 0.02);
+    }
+
+    .file-dropzone.has-file {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.02);
+    }
+
+    .file-dropzone input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-info {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .file-status {
+      font-size: 11px;
+      margin-top: 4px;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .input-text {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-text:focus {
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.1);
+    }
+
+    select.input-text {
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 10px 20px -10px rgba(217, 70, 239, 0.3);
+    }
+
+    .btn-submit:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -5px rgba(217, 70, 239, 0.4);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    /* Área de Resultado */
+    .result-section {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .result-box {
+      width: 100%;
+      background: #05070c;
+      border: 1px dashed var(--primary);
+      border-radius: 14px;
+      padding: 16px;
+      color: var(--primary-hover);
+      font-family: monospace;
+      font-size: 11px;
+      word-break: break-all;
+      max-height: 120px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .btn-copy {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-copy:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="blur-1"></div>
+  <div class="blur-2"></div>
+
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo-container">
+          <span class="logo-icon">🔑</span>
+        </div>
+        <h1>Gerador de Licenças</h1>
+        <p class="subtitle">MT PRO - Sistema de Romaneios (RSA Cripto)</p>
+      </div>
+
+      <!-- Formulário -->
+      <form id="key-form" onsubmit="event.preventDefault(); processarGeracao();">
+        
+        <!-- Chave Privada -->
+        <div class="form-group">
+          <label>1. Carregar Chave Privada (private.key)</label>
+          <div class="file-dropzone" id="dropzone">
+            <input type="file" id="file-input" accept=".key,.pem,.txt" required onchange="handleFileSelect(event)">
+            <div id="dropzone-text">
+              <p class="file-info">Clique ou arraste a chave privada aqui</p>
+              <span class="file-status" id="file-status">Nenhum arquivo selecionado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ID da Máquina -->
+        <div class="form-group">
+          <label>2. ID do Computador do Cliente (Hardware ID)</label>
+          <input type="text" id="hardware-id" class="input-text" placeholder="Cole o código do computador do cliente..." required>
+        </div>
+
+        <!-- Validade -->
+        <div class="form-group">
+          <label>3. Tempo de Validade da Licença</label>
+          <select id="validity" class="input-text">
+            <option value="30">30 Dias (Padrão)</option>
+            <option value="90">90 Dias (Trimestral)</option>
+            <option value="365">365 Dias (Anual)</option>
+            <option value="26662">Vitalícia (2099)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn-submit">Gerar Chave de Ativação</button>
+      </form>
+
+      <!-- Resultado -->
+      <div class="result-section" id="result-sec">
+        <label>Chave de Ativação Gerada (Envie ao Cliente):</label>
+        <div class="result-box" id="result-token"></div>
+        <button class="btn-copy" id="copy-btn" onclick="copiarToken()">
+          <span>Copiar Chave</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let privateKeyContent = '';
+
+    // Lida com o carregamento do arquivo da chave
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        privateKeyContent = e.target.result;
+        
+        // Atualiza a interface
+        const dropzone = document.getElementById('dropzone');
+        const status = document.getElementById('file-status');
+        dropzone.classList.add('has-file');
+        status.innerText = `Chave carregada: ${file.name}`;
+        status.style.color = '#10b981';
+      };
+      reader.readAsText(file);
+    }
+
+    // Limpa a formatação PEM para ArrayBuffer
+    function pemToArrayBuffer(pem) {
+      const pemHeader = "-----BEGIN PRIVATE KEY-----";
+      const pemFooter = "-----END PRIVATE KEY-----";
+      const pemContents = pem
+        .replace(pemHeader, "")
+        .replace(pemFooter, "")
+        .replace(/\s/g, "");
+      
+      const rawBinary = window.atob(pemContents);
+      const len = rawBinary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = rawBinary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+    }
+
+    // Assina a licença usando SubtleCrypto (Nativo do Navegador)
+    async function assinarLicencaRSA(privateKeyPem, hardwareId, diasValidade) {
+      try {
+        const binaryKey = pemToArrayBuffer(privateKeyPem);
+        
+        // Importa a chave PKCS#8
+        const privateKey = await window.crypto.subtle.importKey(
+          "pkcs8",
+          binaryKey,
+          {
+            name: "RSASSA-PKCS1-v1_5",
+            hash: "SHA-256"
+          },
+          false,
+          ["sign"]
+        );
+
+        // Calcula a expiração
+        let expiraEm = new Date();
+        if (diasValidade === "26662") {
+          // Ano 2099 para vitalício
+          expiraEm = new Date(2099, 11, 31, 23, 59, 59);
+        } else {
+          expiraEm.setDate(expiraEm.getDate() + parseInt(diasValidade, 10));
+        }
+
+        const licencaDados = {
+          mid: hardwareId,
+          exp: expiraEm.toISOString()
+        };
+
+        const dadosString = JSON.stringify(licencaDados);
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(dadosString);
+
+        // Assina
+        const signatureBuffer = await window.crypto.subtle.sign(
+          "RSASSA-PKCS1-v1_5",
+          privateKey,
+          dataBuffer
+        );
+
+        const signatureBase64 = arrayBufferToBase64(signatureBuffer);
+
+        const licencaCompleta = {
+          data: licencaDados,
+          signature: signatureBase64
+        };
+
+        // Retorna Base64 completo do pacote JSON
+        return window.btoa(JSON.stringify(licencaCompleta));
+      } catch (err) {
+        throw new Error('Falha ao processar assinatura digital: ' + err.message);
+      }
+    }
+
+    async function processarGeracao() {
+      const hardwareId = document.getElementById('hardware-id').value.trim();
+      const validity = document.getElementById('validity').value;
+      const resultSec = document.getElementById('result-sec');
+      const resultBox = document.getElementById('result-token');
+      const copyBtn = document.getElementById('copy-btn');
+
+      if (!privateKeyContent) {
+        alert('Por favor, carregue o arquivo de chave privada primeiro.');
+        return;
+      }
+
+      try {
+        const token = await assinarLicencaRSA(privateKeyContent, hardwareId, validity);
+        
+        resultBox.innerText = token;
+        resultSec.style.display = 'block';
+        
+        // Reseta botão de cópia
+        copyBtn.innerHTML = '<span>Copiar Chave</span>';
+        
+        // Scroll suave para a chave
+        resultSec.scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function copiarToken() {
+      const token = document.getElementById('result-token').innerText;
+      if (!token) return;
+
+      navigator.clipboard.writeText(token).then(() => {
+        const copyBtn = document.getElementById('copy-btn');
+        copyBtn.innerHTML = '<span style="color: #10b981;">✓ Copiado com Sucesso!</span>';
+        setTimeout(() => {
+          copyBtn.innerHTML = '<span>Copiar Chave</span>';
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

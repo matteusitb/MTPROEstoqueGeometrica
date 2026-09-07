@@ -1,0 +1,44 @@
+{
+  "name": "gestao-toras",
+  "version": "1.0.0",
+  "description": "Sistema de Controle de Estoque de Toras Geométrica",
+  "author": "Matteus sousa",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "build:protect": "javascript-obfuscator renderer-dev.js --output renderer.js --string-array-encoding base64 --split-strings true --debug-protection true",
+    "dist": "npm run build:protect && electron-builder"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "node-machine-id": "^1.1.12"
+  },
+  "build": {
+    "appId": "com.gestaotoras.app",
+    "productName": "Gestão de Toras Medida Geométrica",
+    "publish": null, 
+    "directories": {
+      "output": "dist_setup"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Gestão de Toras Medida Geométrica"
+    },
+    "files": [
+      "**/*",
+      "!renderer-dev.js",
+      "!dist_setup/**/*"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.4.0",
+    "javascript-obfuscator": "^4.1.1"
+  }
+}
