@@ -55,7 +55,7 @@ function formatarDataBR(dataStr, incluirHora = false) {
             }
             return dataFmt;
         }
-    } catch (e) {}
+    } catch (e) { }
 
     return s;
 }
@@ -1036,7 +1036,7 @@ function filtrarTabelaEspecies(termo) {
         renderizarTabelaEspecies(listaEspeciesCache);
         return;
     }
-    const filtradas = listaEspeciesCache.filter(esp => 
+    const filtradas = listaEspeciesCache.filter(esp =>
         (esp.nome && esp.nome.toLowerCase().includes(busca)) ||
         (esp.cientifico && esp.cientifico.toLowerCase().includes(busca)) ||
         String(esp.id).includes(busca)
@@ -1092,14 +1092,14 @@ async function sincronizarEspeciesSupabase(silencioso = false) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Sincronização Concluída!',
-                    text: `${res.count} espécies foram sincronizadas do Supabase com sucesso.`,
+                    text: `${res.count} espécies foram sincronizadas com sucesso.`,
                     confirmButtonColor: '#10b981'
                 });
             } else {
                 console.log(`✅ [SYNC] ${res.count} espécies sincronizadas automaticamente.`);
             }
         } else {
-            throw new Error(res?.error || 'Não foi possível conectar ao Supabase.');
+            throw new Error(res?.error || 'Não foi possível conectar à Nuvem.');
         }
     } catch (err) {
         console.warn("Aviso na sincronização de espécies:", err.message);
@@ -1107,14 +1107,14 @@ async function sincronizarEspeciesSupabase(silencioso = false) {
             Swal.fire({
                 icon: 'error',
                 title: 'Falha na Sincronização',
-                text: 'Não foi possível sincronizar com o Supabase. Verifique sua conexão com a internet ou as credenciais.',
+                text: 'Não foi possível sincronizar com a Nuvem. Verifique sua conexão com a internet.',
                 confirmButtonColor: '#6366f1'
             });
         }
     } finally {
         if (btnSync) {
             btnSync.disabled = false;
-            btnSync.innerHTML = '<i data-lucide="cloud-download"></i> <span>Sincronizar com Supabase</span>';
+            btnSync.innerHTML = '<i data-lucide="cloud-download"></i> <span>Sincronizar com Nuvem</span>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     }
@@ -1475,37 +1475,155 @@ async function carregarSelectRomaneios() {
     }
 }
 
+let listaRomaneiosCache = [];
+let romaneiosPaginaAtual = 1;
+let romaneiosItensPorPagina = 15;
+let romaneiosFiltroBusca = '';
+
 async function carregarRomaneios() {
     try {
         const romaneios = await window.api.invoke('listar-romaneios');
-        const tbody = document.getElementById('lista-romaneios-corpo');
-        if (tbody) {
-            if (romaneios.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">Nenhum romaneio cadastrado até o momento.</td></tr>';
-            } else {
-                tbody.innerHTML = romaneios.map(r => `
-                    <tr>
-                        <td><strong>${r.numero}</strong></td>
-                        <td>${formatarDataBR(r.data)}</td>
-                        <td>${r.fornecedor_nome || r.fornecedor || '-'}</td>
-                        <td>${r.motorista_nome || r.motorista || '-'}</td>
-                        <td style="text-align: center;"><span class="badge-count">${r.total_toras}</span></td>
-                        <td style="text-align: center;"><span class="badge-volume">${(r.volume_total_liquido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} m³</span></td>
-                        <td style="text-align: center;"><span class="badge-volume" style="background:#f1f5f9; color:#475569;">${(r.volume_total_bruto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} m³</span></td>
-                        <td style="text-align: right; padding-right: 25px;">
-                            <button class="btn-save" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; background: #6366f1;" onclick="verDetalhesRomaneio(${r.id})">
-                                <i data-lucide="eye" style="width: 14px; height: 14px;"></i> Detalhes
-                            </button>
-                            <button class="btn-icon-edit" onclick="prepararEdicaoRomaneio(${r.id})" title="Editar"><i data-lucide="pencil"></i></button>
-                            <button class="btn-icon-delete" onclick="excluirRomaneio(${r.id})" title="Excluir"><i data-lucide="trash-2"></i></button>
-                        </td>
-                    </tr>`).join('');
-            }
-        }
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        listaRomaneiosCache = Array.isArray(romaneios) ? romaneios : [];
+        renderizarTabelaRomaneiosPaginada();
     } catch (err) {
         console.error("Erro ao listar romaneios:", err);
     }
+}
+
+function filtrarTabelaRomaneios(termo) {
+    romaneiosFiltroBusca = (termo || '').trim().toLowerCase();
+    romaneiosPaginaAtual = 1;
+    renderizarTabelaRomaneiosPaginada();
+}
+
+function mudarPaginaRomaneios(novaPagina) {
+    romaneiosPaginaAtual = novaPagina;
+    renderizarTabelaRomaneiosPaginada();
+}
+
+function mudarQtdItensPorPaginaRomaneios(novaQtd) {
+    const qtd = parseInt(novaQtd, 10);
+    if (!isNaN(qtd) && qtd > 0) {
+        romaneiosItensPorPagina = qtd;
+        romaneiosPaginaAtual = 1;
+        renderizarTabelaRomaneiosPaginada();
+    }
+}
+
+function renderizarTabelaRomaneiosPaginada() {
+    const tbody = document.getElementById('lista-romaneios-corpo');
+    const containerPaginacao = document.getElementById('paginacao-romaneios-container');
+    if (!tbody) return;
+
+    // 1. Filtrar lista
+    let listaFiltrada = listaRomaneiosCache;
+    if (romaneiosFiltroBusca) {
+        listaFiltrada = listaRomaneiosCache.filter(r => {
+            const numero = (r.numero || '').toString().toLowerCase();
+            const forn = (r.fornecedor_nome || r.fornecedor || '').toLowerCase();
+            const mot = (r.motorista_nome || r.motorista || '').toLowerCase();
+            const dataBR = r.data ? formatarDataBR(r.data).toLowerCase() : '';
+            return numero.includes(romaneiosFiltroBusca) ||
+                   forn.includes(romaneiosFiltroBusca) ||
+                   mot.includes(romaneiosFiltroBusca) ||
+                   dataBR.includes(romaneiosFiltroBusca);
+        });
+    }
+
+    const totalRegistros = listaFiltrada.length;
+    const totalPaginas = Math.ceil(totalRegistros / romaneiosItensPorPagina) || 1;
+
+    // Ajustar página atual caso ultrapasse o limite
+    if (romaneiosPaginaAtual > totalPaginas) {
+        romaneiosPaginaAtual = totalPaginas;
+    }
+    if (romaneiosPaginaAtual < 1) {
+        romaneiosPaginaAtual = 1;
+    }
+
+    // 2. Paginar lista
+    const inicio = (romaneiosPaginaAtual - 1) * romaneiosItensPorPagina;
+    const fim = inicio + romaneiosItensPorPagina;
+    const registrosExibidos = listaFiltrada.slice(inicio, fim);
+
+    // 3. Renderizar linhas
+    if (totalRegistros === 0) {
+        if (romaneiosFiltroBusca) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">Nenhum romaneio encontrado para a busca "<strong>${romaneiosFiltroBusca}</strong>".</td></tr>`;
+        } else {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #94a3b8;">Nenhum romaneio cadastrado até o momento.</td></tr>';
+        }
+    } else {
+        tbody.innerHTML = registrosExibidos.map(r => `
+            <tr>
+                <td><strong>${r.numero}</strong></td>
+                <td>${formatarDataBR(r.data)}</td>
+                <td>${r.fornecedor_nome || r.fornecedor || '-'}</td>
+                <td>${r.motorista_nome || r.motorista || '-'}</td>
+                <td style="text-align: center;"><span class="badge-count">${r.total_toras}</span></td>
+                <td style="text-align: center;"><span class="badge-volume">${(r.volume_total_liquido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} m³</span></td>
+                <td style="text-align: center;"><span class="badge-volume" style="background:#f1f5f9; color:#475569;">${(r.volume_total_bruto || 0).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} m³</span></td>
+                <td style="text-align: right; padding-right: 25px;">
+                    <button class="btn-save" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; background: #6366f1;" onclick="verDetalhesRomaneio(${r.id})">
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i> Detalhes
+                    </button>
+                    <button class="btn-icon-edit" onclick="prepararEdicaoRomaneio(${r.id})" title="Editar"><i data-lucide="pencil"></i></button>
+                    <button class="btn-icon-delete" onclick="excluirRomaneio(${r.id})" title="Excluir"><i data-lucide="trash-2"></i></button>
+                </td>
+            </tr>`).join('');
+    }
+
+    // 4. Renderizar Controles de Paginação
+    if (containerPaginacao) {
+        if (totalRegistros === 0) {
+            containerPaginacao.style.display = 'none';
+            containerPaginacao.innerHTML = '';
+        } else {
+            containerPaginacao.style.display = 'flex';
+            const itemInicio = inicio + 1;
+            const itemFim = Math.min(fim, totalRegistros);
+
+            const isPrimeira = romaneiosPaginaAtual === 1;
+            const isUltima = romaneiosPaginaAtual === totalPaginas;
+
+            containerPaginacao.innerHTML = `
+                <div class="paginacao-esquerda">
+                    <span class="paginacao-info-texto">
+                        Exibindo <strong>${itemInicio}-${itemFim}</strong> de <strong>${totalRegistros}</strong> ${totalRegistros === 1 ? 'romaneio' : 'romaneios'}
+                        ${romaneiosFiltroBusca ? `(filtrados)` : ''}
+                    </span>
+                    <div class="paginacao-qtd-select-wrapper">
+                        <span>Exibir:</span>
+                        <select class="select-paginacao" onchange="mudarQtdItensPorPaginaRomaneios(this.value)">
+                            <option value="10" ${romaneiosItensPorPagina === 10 ? 'selected' : ''}>10</option>
+                            <option value="15" ${romaneiosItensPorPagina === 15 ? 'selected' : ''}>15</option>
+                            <option value="25" ${romaneiosItensPorPagina === 25 ? 'selected' : ''}>25</option>
+                            <option value="50" ${romaneiosItensPorPagina === 50 ? 'selected' : ''}>50</option>
+                            <option value="100" ${romaneiosItensPorPagina === 100 ? 'selected' : ''}>100</option>
+                        </select>
+                        <span>por página</span>
+                    </div>
+                </div>
+                <div class="paginacao-direita">
+                    <button class="btn-paginacao" title="Primeira Página" onclick="mudarPaginaRomaneios(1)" ${isPrimeira ? 'disabled' : ''}>
+                        <i data-lucide="chevrons-left" style="width: 15px; height: 15px;"></i>
+                    </button>
+                    <button class="btn-paginacao" title="Página Anterior" onclick="mudarPaginaRomaneios(${romaneiosPaginaAtual - 1})" ${isPrimeira ? 'disabled' : ''}>
+                        <i data-lucide="chevron-left" style="width: 15px; height: 15px;"></i>
+                    </button>
+                    <span class="paginacao-badge-pagina">Pág. ${romaneiosPaginaAtual} de ${totalPaginas}</span>
+                    <button class="btn-paginacao" title="Próxima Página" onclick="mudarPaginaRomaneios(${romaneiosPaginaAtual + 1})" ${isUltima ? 'disabled' : ''}>
+                        <i data-lucide="chevron-right" style="width: 15px; height: 15px;"></i>
+                    </button>
+                    <button class="btn-paginacao" title="Última Página" onclick="mudarPaginaRomaneios(${totalPaginas})" ${isUltima ? 'disabled' : ''}>
+                        <i data-lucide="chevrons-right" style="width: 15px; height: 15px;"></i>
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function recalcularFreteTotalRomaneio() {
@@ -2813,15 +2931,15 @@ async function gerarPreviaRelatorio() {
                     </div>
                     <div class="form-body" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
                         ${Object.keys(resumo.resumoEspecies).map(esp => {
-                            const r = resumo.resumoEspecies[esp];
-                            return `
+                const r = resumo.resumoEspecies[esp];
+                return `
                                 <div class="dash-lotes-container" style="padding: 15px;">
                                     <h4 style="margin: 0 0 8px 0;">${esp}</h4>
                                     <p style="margin: 0; font-size: 13px; color: #64748b;">Pátio: ${r.pQtd} toras (${r.pVol.toFixed(3)} m³)</p>
                                     <p style="margin: 0; font-size: 13px; color: #64748b;">Serradas: ${r.sQtd} toras (${r.sVol.toFixed(3)} m³)</p>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
                 </div>
             `;
@@ -3540,7 +3658,7 @@ async function resetarSistemaCompleto() {
         cancelButtonText: 'Cancelar'
     });
 
-        if (isConfirmed) {
+    if (isConfirmed) {
         try {
             await window.api.invoke('limpar-banco-dados');
             await Swal.fire('Limpo', 'Todos os dados foram apagados com sucesso.', 'success');

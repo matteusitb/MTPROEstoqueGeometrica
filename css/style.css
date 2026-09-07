@@ -3288,6 +3288,115 @@ body.dark-mode .kbd-hint {
     box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
 }
 
+/* ============================================================ */
+/* PAGINAÇÃO DE TABELAS (ROMANEIOS / OUTRAS VIEWS) */
+/* ============================================================ */
+.paginacao-romaneios-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 14px 20px;
+    background: var(--card-header-bg, #fcfdff);
+    border-top: 1px solid var(--border-color, #eef2f6);
+    font-size: 0.825rem;
+    color: var(--text-main, #64748b);
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.paginacao-esquerda {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.paginacao-info-texto {
+    font-weight: 500;
+    color: var(--text-dark, #1e293b);
+}
+
+.paginacao-info-texto strong {
+    color: var(--accent-color, #6366f1);
+}
+
+.paginacao-qtd-select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+
+.select-paginacao {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    background: var(--input-bg, #f8fafc);
+    color: var(--text-dark, #1e293b);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+}
+
+.select-paginacao:focus {
+    border-color: var(--accent-color, #6366f1);
+}
+
+.paginacao-direita {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-paginacao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    background: var(--card-bg, #ffffff);
+    color: var(--text-dark, #334155);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    gap: 4px;
+}
+
+.btn-paginacao:hover:not(:disabled) {
+    background: var(--active-item-bg, #f0f4ff);
+    color: var(--text-active, #4f46e5);
+    border-color: var(--accent-color, #6366f1);
+    transform: translateY(-1px);
+}
+
+.btn-paginacao:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: var(--input-bg, #f8fafc);
+    color: #94a3b8;
+    border-color: var(--border-color, #e2e8f0);
+}
+
+.paginacao-badge-pagina {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: var(--active-item-bg, #f0f4ff);
+    color: var(--text-active, #4f46e5);
+    font-weight: 700;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+
 
 
 
