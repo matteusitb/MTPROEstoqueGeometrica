@@ -464,6 +464,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     try {
         await inicializarAutenticacao();
+        await carregarVersaoSistema();
+        registrarListenersUpdater();
     } catch (e) {
         console.error("Erro na inicialização:", e);
     }
@@ -807,6 +809,7 @@ async function carregarTela(viewName, element) {
                 break;
             case 'configuracoes':
                 carregarConfiguracoesBackup();
+                carregarVersaoSistema();
                 break;
         }
     } catch (err) {
@@ -3537,7 +3540,7 @@ async function resetarSistemaCompleto() {
         cancelButtonText: 'Cancelar'
     });
 
-    if (isConfirmed) {
+        if (isConfirmed) {
         try {
             await window.api.invoke('limpar-banco-dados');
             await Swal.fire('Limpo', 'Todos os dados foram apagados com sucesso.', 'success');
@@ -3545,5 +3548,177 @@ async function resetarSistemaCompleto() {
         } catch (err) {
             avisar('error', tratarErroIpc(err));
         }
+    }
+}
+
+// ============================================================
+// ATUALIZAÇÕES AUTOMÁTICAS E CONTROLE DE VERSÃO (ELECTRON-UPDATER)
+// ============================================================
+let appVersionGlobal = '1.0.0';
+
+async function carregarVersaoSistema() {
+    try {
+        if (window.api && typeof window.api.invoke === 'function') {
+            const ver = await window.api.invoke('get-app-version');
+            if (ver) {
+                appVersionGlobal = ver;
+                const elBadge = document.getElementById('display-app-version-badge');
+                const elFooter = document.getElementById('footer-app-version');
+                if (elBadge) elBadge.innerText = `Versão v${ver}`;
+                if (elFooter) elFooter.innerText = `ToraControl Geométrica v${ver} | Status: Conectado`;
+            }
+        }
+    } catch (e) {
+        console.warn("Erro ao obter versão do app:", e);
+    }
+}
+
+function registrarListenersUpdater() {
+    if (!window.api || typeof window.api.receive !== 'function') return;
+
+    window.api.receive('updater-status', (payload) => {
+        console.log("📡 Updater Status Event:", payload);
+        if (!payload) return;
+        const { status } = payload;
+        const titleEl = document.getElementById('updater-status-title');
+        const descEl = document.getElementById('updater-status-desc');
+        const btnCheck = document.getElementById('btn-check-updates');
+        const btnRestart = document.getElementById('btn-restart-update');
+        const progressContainer = document.getElementById('updater-progress-container');
+        const progressBar = document.getElementById('updater-progress-bar');
+        const progressText = document.getElementById('updater-progress-text');
+        const progressPercent = document.getElementById('updater-progress-percent');
+        const progressDetails = document.getElementById('updater-progress-details');
+        const indicatorDot = document.getElementById('updater-indicator-dot');
+
+        switch (status) {
+            case 'checking':
+                if (titleEl) titleEl.innerText = "Verificando atualizações...";
+                if (descEl) descEl.innerText = "Conectando ao GitHub Releases para verificar novas versões...";
+                if (btnCheck) {
+                    btnCheck.disabled = true;
+                    btnCheck.innerHTML = `<i data-lucide="loader" class="animate-spin"></i> <span>Verificando...</span>`;
+                }
+                if (indicatorDot) indicatorDot.style.background = "#f59e0b";
+                break;
+
+            case 'available':
+                if (titleEl) titleEl.innerText = `Nova Versão v${payload.version} Encontrada!`;
+                if (descEl) descEl.innerText = "Iniciando download automático dos arquivos de atualização...";
+                if (progressContainer) progressContainer.style.display = "block";
+                if (btnCheck) {
+                    btnCheck.disabled = true;
+                    btnCheck.innerHTML = `<i data-lucide="download-cloud"></i> <span>Baixando v${payload.version}...</span>`;
+                }
+                if (indicatorDot) indicatorDot.style.background = "#3b82f6";
+                avisar('info', `Nova versão v${payload.version} disponível! Baixando...`);
+                break;
+
+            case 'not-available':
+                if (titleEl) titleEl.innerText = "Sistema Atualizado";
+                if (descEl) descEl.innerText = `Você já está utilizando a versão mais recente (v${payload.version || appVersionGlobal}).`;
+                if (progressContainer) progressContainer.style.display = "none";
+                if (btnCheck) {
+                    btnCheck.disabled = false;
+                    btnCheck.innerHTML = `<i data-lucide="refresh-cw"></i> <span>Verificar Novamente</span>`;
+                }
+                if (indicatorDot) indicatorDot.style.background = "#10b981";
+                break;
+
+            case 'downloading':
+                if (progressContainer) progressContainer.style.display = "block";
+                if (progressBar) progressBar.style.width = `${payload.percent}%`;
+                if (progressPercent) progressPercent.innerText = `${payload.percent}%`;
+                if (progressText) {
+                    const transMB = ((payload.transferred || 0) / 1048576).toFixed(1);
+                    const totalMB = ((payload.total || 0) / 1048576).toFixed(1);
+                    progressText.innerText = `Baixando atualização... (${transMB}MB / ${totalMB}MB)`;
+                }
+                if (progressDetails) {
+                    const mbps = ((payload.bytesPerSecond || 0) / 1048576).toFixed(2);
+                    progressDetails.innerText = `Velocidade: ${mbps} MB/s`;
+                }
+                break;
+
+            case 'downloaded':
+                if (titleEl) titleEl.innerText = `Versão v${payload.version} Pronta para Instalar! 🎉`;
+                if (descEl) descEl.innerText = "A atualização foi baixada e verificada com sucesso. Reinicie o aplicativo para aplicar.";
+                if (progressContainer) progressContainer.style.display = "none";
+                if (btnCheck) btnCheck.style.display = "none";
+                if (btnRestart) btnRestart.style.display = "flex";
+                if (indicatorDot) indicatorDot.style.background = "#10b981";
+
+                Swal.fire({
+                    title: `Atualização v${payload.version} Pronta! 🎉`,
+                    text: "A nova versão foi baixada. Deseja reiniciar o aplicativo agora para aplicar a atualização?",
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Sim, reiniciar agora',
+                    cancelButtonText: 'Depois (ao fechar)'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        reiniciarEAtualizar();
+                    }
+                });
+                break;
+
+            case 'error':
+                if (titleEl) titleEl.innerText = "Verificação de Atualização";
+                if (descEl) descEl.innerText = `Não foi possível verificar atualizações: ${payload.error || 'Erro de conexão'}`;
+                if (progressContainer) progressContainer.style.display = "none";
+                if (btnCheck) {
+                    btnCheck.disabled = false;
+                    btnCheck.innerHTML = `<i data-lucide="refresh-cw"></i> <span>Verificar Atualizações</span>`;
+                }
+                if (indicatorDot) indicatorDot.style.background = "#ef4444";
+                break;
+        }
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+}
+
+async function verificarAtualizacoesManualmente() {
+    try {
+        const btnCheck = document.getElementById('btn-check-updates');
+        if (btnCheck) {
+            btnCheck.disabled = true;
+            btnCheck.innerHTML = `<i data-lucide="loader" class="animate-spin"></i> <span>Verificando...</span>`;
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        const res = await window.api.invoke('check-for-updates');
+        if (res && res.isDev) {
+            Swal.fire({
+                title: 'Modo Desenvolvimento',
+                text: res.message || 'Atualizações automáticas funcionam no executável de produção.',
+                icon: 'info',
+                confirmButtonColor: '#6366f1'
+            });
+            if (btnCheck) {
+                btnCheck.disabled = false;
+                btnCheck.innerHTML = `<i data-lucide="refresh-cw"></i> <span>Verificar Atualizações</span>`;
+            }
+        } else if (res && !res.success && res.error) {
+            avisar('error', `Falha ao checar atualizações: ${res.error}`);
+            if (btnCheck) {
+                btnCheck.disabled = false;
+                btnCheck.innerHTML = `<i data-lucide="refresh-cw"></i> <span>Verificar Atualizações</span>`;
+            }
+        }
+    } catch (err) {
+        avisar('error', tratarErroIpc(err));
+    } finally {
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+async function reiniciarEAtualizar() {
+    try {
+        await window.api.invoke('quit-and-install-update');
+    } catch (err) {
+        avisar('error', tratarErroIpc(err));
     }
 }

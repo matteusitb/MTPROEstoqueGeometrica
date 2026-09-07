@@ -1848,6 +1848,56 @@
                         </div>
                     </div>
 
+                    <!-- CARD ATUALIZAÇÕES DO SISTEMA (GITHUB RELEASES) -->
+                    <div class="form-card" style="margin-bottom: 20px; border-top: 4px solid #3b82f6;">
+                        <div class="form-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="header-icon" style="background: #dbeafe; color: #2563eb;"><i data-lucide="sparkles"></i></div>
+                                <div>
+                                    <h3>Atualizações do Sistema (GitHub Releases)</h3>
+                                    <p>Mantenha seu sistema sempre com as últimas melhorias e correções de segurança</p>
+                                </div>
+                            </div>
+                            <div class="badge-status-pill" style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px;">
+                                <span class="status-indicator-dot" id="updater-indicator-dot" style="background: #10b981;"></span>
+                                <span id="display-app-version-badge" style="font-weight: 600; font-size: 13px;">Versão v1.0.0</span>
+                            </div>
+                        </div>
+                        <div class="form-body">
+                            <div class="bg-input border-subtle"
+                                style="display: flex; flex-direction: column; gap: 15px; padding: 20px; border-radius: 8px; border: 1px solid;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                                    <div>
+                                        <h4 class="text-title" id="updater-status-title" style="margin-bottom: 4px; font-size: 15px;">Verificação de Versão</h4>
+                                        <p class="text-muted" id="updater-status-desc" style="font-size: 13px; margin: 0;">Clique no botão ao lado para verificar se há novas atualizações disponíveis no GitHub.</p>
+                                    </div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <button class="btn-save" id="btn-check-updates" onclick="verificarAtualizacoesManualmente()"
+                                            style="width: auto; padding: 10px 22px; background: #2563eb; display: flex; align-items: center; gap: 8px;">
+                                            <i data-lucide="refresh-cw"></i> <span>Verificar Atualizações</span>
+                                        </button>
+                                        <button class="btn-save" id="btn-restart-update" onclick="reiniciarEAtualizar()"
+                                            style="display: none; width: auto; padding: 10px 22px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                            <i data-lucide="arrow-up-circle"></i> <span>Reiniciar e Atualizar</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- BARRA DE PROGRESSO DE DOWNLOAD -->
+                                <div id="updater-progress-container" style="display: none; margin-top: 10px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; font-weight: 600; color: var(--text-dark);">
+                                        <span id="updater-progress-text">Baixando atualização...</span>
+                                        <span id="updater-progress-percent">0%</span>
+                                    </div>
+                                    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
+                                        <div id="updater-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s ease;"></div>
+                                    </div>
+                                    <div id="updater-progress-details" style="font-size: 11px; color: #64748b; margin-top: 4px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-card" style="margin-bottom: 20px; border-top: 4px solid #10b981;">
                         <div class="form-header">
                             <div class="header-icon" style="background: #dcfce7; color: #10b981;"><i data-lucide="clock"></i></div>
@@ -1906,7 +1956,7 @@
                             </div>
                         </div>
 
-                        <div class="form-footer" style="background: #f8fafc; font-size: 12px; color: #64748b;">
+                        <div class="form-footer" style="background: #f8fafc; font-size: 12px; color: #64748b;" id="footer-app-version">
                             ToraControl Geométrica v1.0.0 | Status: Conectado
                         </div>
                     </div>

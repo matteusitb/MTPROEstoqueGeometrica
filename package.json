@@ -8,16 +8,24 @@
     "start": "electron .",
     "postinstall": "electron-builder install-app-deps",
     "build:protect": "javascript-obfuscator renderer-dev.js --output renderer.js --string-array-encoding base64 --split-strings true --debug-protection true",
-    "dist": "npm run build:protect && electron-builder"
+    "dist": "npm run build:protect && electron-builder",
+    "dist:publish": "npm run build:protect && electron-builder --publish always",
+    "release": "npm run dist:publish"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",
+    "electron-updater": "^6.8.9",
     "node-machine-id": "^1.1.12"
   },
   "build": {
     "appId": "com.gestaotoras.app",
     "productName": "Gestão de Toras Medida Geométrica",
-    "publish": null, 
+    "publish": {
+      "provider": "github",
+      "owner": "matteusitb",
+      "repo": "MTPROEstoqueGeometrica",
+      "releaseType": "release"
+    },
     "directories": {
       "output": "dist_setup"
     },

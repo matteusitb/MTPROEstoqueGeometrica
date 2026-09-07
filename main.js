@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 try { require('dotenv').config(); } catch (e) {}
 const { machineIdSync } = require('node-machine-id');
 const fs = require('fs');
@@ -623,6 +624,15 @@ app.whenReady().then(() => {
             console.error("Erro no auto-sync de espécies:", e);
         }
     }, 2500);
+
+    // Verificação de atualizações do sistema em segundo plano
+    if (app.isPackaged) {
+        setTimeout(() => {
+            autoUpdater.checkForUpdates().catch(err => {
+                console.warn("⚠️ Verificação automática de atualizações:", err.message);
+            });
+        }, 6000);
+    }
 });
 
 // --- HELPERS DE SISTEMA ---
@@ -2096,7 +2106,94 @@ ipcMain.handle('auth-update-offline-login', async (event, id) => {
     }
 });
 
+// ============================================================
+// ATUALIZAÇÕES AUTOMÁTICAS (ELECTRON-UPDATER)
+// ============================================================
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+function enviarStatusUpdater(status, data = {}) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('updater-status', { status, ...data });
+    }
+}
+
+autoUpdater.on('checking-for-update', () => {
+    console.log('🔍 Verificando se há atualizações disponíveis...');
+    enviarStatusUpdater('checking');
+});
+
+autoUpdater.on('update-available', (info) => {
+    console.log('✨ Nova atualização disponível:', info.version);
+    registrarLog('Sistema', 'ATUALIZAÇÃO', `Nova versão ${info.version} disponível.`);
+    enviarStatusUpdater('available', {
+        version: info.version,
+        releaseDate: info.releaseDate,
+        releaseNotes: info.releaseNotes
+    });
+});
+
+autoUpdater.on('update-not-available', (info) => {
+    console.log('✅ O sistema já está na versão mais recente:', info?.version || app.getVersion());
+    enviarStatusUpdater('not-available', { version: app.getVersion() });
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('❌ Erro no auto-updater:', err.message);
+    registrarLog('Sistema', 'ERRO UPDATE', `Falha na verificação de atualização: ${err.message}`);
+    enviarStatusUpdater('error', { error: err.message });
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+    enviarStatusUpdater('downloading', {
+        percent: Math.round(progressObj.percent || 0),
+        bytesPerSecond: progressObj.bytesPerSecond || 0,
+        transferred: progressObj.transferred || 0,
+        total: progressObj.total || 0
+    });
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('🎉 Atualização baixada com sucesso:', info.version);
+    registrarLog('Sistema', 'ATUALIZAÇÃO', `Versão ${info.version} pronta para instalação.`);
+    enviarStatusUpdater('downloaded', {
+        version: info.version,
+        releaseNotes: info.releaseNotes
+    });
+});
+
+ipcMain.handle('check-for-updates', async () => {
+    if (!app.isPackaged) {
+        return {
+            success: false,
+            isDev: true,
+            version: app.getVersion(),
+            message: 'A verificação com GitHub Releases está ativa no executável final instalado (produção).'
+        };
+    }
+    try {
+        const result = await autoUpdater.checkForUpdates();
+        return { success: true, updateInfo: result?.updateInfo };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('quit-and-install-update', () => {
+    try {
+        autoUpdater.quitAndInstall(false, true);
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
+});
+
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
 });
+
 
